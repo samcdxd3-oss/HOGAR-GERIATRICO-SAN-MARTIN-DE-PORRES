@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Eficiencia Cloud — Del Caos al Control</title>
+<meta name="description" content="Sistema de gestión integral para residencias de ancianos: cuidado, finanzas, inventario y personal en una sola plataforma.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,340;0,9..144,500;0,9..144,600;1,9..144,420&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F2F0E5;
+  --bg-deep:#E7E1CE;
+  --ink:#202B22;
+  --ink-soft:#4B564C;
+  --sage:#4E6B5B;
+  --sage-deep:#354A3E;
+  --sage-mist:#B9C6BC;
+  --clay:#A5583A;
+  --clay-deep:#833F27;
+  --gold:#CC9A3F;
+  --rose:#B96C82;
+  --card:#FBFAF3;
+  --line:rgba(32,43,34,0.14);
+  --line-strong:rgba(32,43,34,0.26);
+  --shadow:0 18px 40px -22px rgba(32,43,34,0.35);
+  --serif:"Fraunces", serif;
+  --sans:"Work Sans", sans-serif;
+  --mono:"IBM Plex Mono", monospace;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+html{scroll-behavior:smooth;}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:16px;
+  line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+img{max-width:100%; display:block;}
+a{color:inherit;}
+.wrap{max-width:1160px; margin:0 auto; padding:0 32px;}
+@media(max-width:640px){.wrap{padding:0 20px;}}
+
+::selection{background:var(--sage-mist); color:var(--sage-deep);}
+
+/* focus visibility */
+a:focus-visible, button:focus-visible{outline:2px solid var(--clay); outline-offset:3px;}
+
+@media (prefers-reduced-motion: reduce){
+  *{animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important; scroll-behavior:auto !important;}
+}
+
+h1,h2,h3{font-family:var(--serif); font-weight:600; letter-spacing:-0.01em; color:var(--sage-deep);}
+.eyebrow{
+  font-family:var(--mono); font-size:12.5px; letter-spacing:0.14em; text-transform:uppercase;
+  color:var(--clay-deep); display:flex; align-items:center; gap:10px; margin-bottom:18px;
+}
+.eyebrow::before{content:""; width:26px; height:1px; background:var(--clay); display:inline-block;}
+
+.btn{
+  display:inline-flex; align-items:center; gap:10px;
+  font-family:var(--sans); font-weight:600; font-size:15px;
+  padding:14px 26px; border-radius:2px; border:1px solid transparent;
+  cursor:pointer; text-decoration:none; transition:transform .25s ease, background .25s ease, color .25s ease, border-color .25s ease;
+}
+.btn-primary{background:var(--sage-deep); color:#F6F4E9;}
+.btn-primary:hover{background:var(--clay-deep); transform:translateY(-2px);}
+.btn-ghost{border-color:var(--line-strong); color:var(--sage-deep); background:transparent;}
+.btn-ghost:hover{border-color:var(--sage-deep); transform:translateY(-2px);}
+
+/* ---------- NAV ---------- */
+.nav{position:sticky; top:0; z-index:50; backdrop-filter:blur(10px); background:rgba(242,240,229,0.86); border-bottom:1px solid var(--line);}
+.nav-inner{display:flex; align-items:center; justify-content:space-between; padding:16px 32px; gap:24px;}
+.logo{display:flex; align-items:center; gap:10px; text-decoration:none;}
+.logo-text{font-family:var(--serif); font-weight:600; font-size:19px; color:var(--sage-deep);}
+.logo-text em{font-style:italic; color:var(--clay-deep); font-weight:500;}
+.nav-links{display:flex; gap:30px; font-size:14.5px; font-weight:500;}
+.nav-links a{text-decoration:none; color:var(--ink-soft); position:relative; padding-bottom:3px;}
+.nav-links a:hover{color:var(--sage-deep);}
+.nav-cta{padding:10px 20px; font-size:14px;}
+@media(max-width:800px){.nav-links{display:none;} .nav-inner{padding:14px 20px;}}
+
+/* ---------- HERO ---------- */
+.hero{position:relative; padding:96px 0 110px; overflow:hidden;}
+.hero-rings{position:absolute; inset:-20% -10% auto auto; width:900px; height:900px; pointer-events:none;
+  background:
+    repeating-radial-gradient(circle at 70% 20%, transparent 0 34px, rgba(78,107,91,0.07) 35px 36px);
+  opacity:0.9;}
+.hero-grid{display:grid; grid-template-columns:1.05fr 0.95fr; gap:56px; align-items:center; position:relative;}
+@media(max-width:940px){.hero-grid{grid-template-columns:1fr;}}
+
+.hero-copy h1{font-size:clamp(46px, 6.4vw, 78px); line-height:0.98; margin-bottom:26px;}
+.hero-copy h1 em{font-style:italic; color:var(--clay-deep); font-weight:500;}
+.hero-sub{font-size:18px; color:var(--ink-soft); max-width:480px; margin-bottom:36px;}
+.hero-actions{display:flex; gap:16px; flex-wrap:wrap;}
+
+.hero-panel{position:relative;}
+.panel-card{
+  background:var(--card); border:1px solid var(--line-strong); border-radius:4px;
+  padding:26px; box-shadow:var(--shadow);
+  transform:rotate(0.6deg);
+  animation:float 7s ease-in-out infinite;
+}
+@keyframes float{0%,100%{transform:rotate(0.6deg) translateY(0);} 50%{transform:rotate(0.6deg) translateY(-8px);}}
+.panel-head{display:flex; align-items:center; gap:10px; margin-bottom:22px;}
+.panel-dot{width:9px; height:9px; border-radius:50%; background:var(--sage); box-shadow:0 0 0 4px rgba(78,107,91,0.18);}
+.panel-title{font-family:var(--serif); font-weight:600; font-size:17px; color:var(--sage-deep);}
+.panel-live{margin-left:auto; font-family:var(--mono); font-size:10.5px; letter-spacing:0.1em; color:var(--clay-deep); border:1px solid var(--clay); padding:2px 8px; border-radius:20px;}
+.panel-stats{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:22px;}
+.stat{background:var(--bg); border:1px solid var(--line); border-radius:3px; padding:14px 16px;}
+.stat-label{display:block; font-size:12px; color:var(--ink-soft); margin-bottom:6px;}
+.stat-value{font-family:var(--mono); font-size:26px; font-weight:500; color:var(--sage-deep);}
+.stat-clay{color:var(--clay-deep);}
+.panel-chart{border:1px solid var(--line); border-radius:3px; padding:12px 16px 8px; margin-bottom:20px;}
+.spark{width:100%; height:56px; display:block;}
+.panel-chart-label{font-size:11.5px; color:var(--ink-soft);}
+.panel-alerts{list-style:none; display:flex; flex-direction:column; gap:10px; font-size:13.5px; color:var(--ink-soft);}
+.panel-alerts li{display:flex; align-items:center; gap:10px;}
+.alert-dot{width:7px; height:7px; border-radius:50%; flex-shrink:0;}
+.alert-amber{background:var(--gold);}
+.alert-clay{background:var(--clay);}
+.alert-sage{background:var(--sage);}
+
+/* ---------- SECTION SHARED ---------- */
+.section{padding:100px 0;}
+.section-alt{background:var(--bg-deep);}
+.section-title{font-size:clamp(30px,3.6vw,42px); line-height:1.08; margin-bottom:20px;}
+.section-lead{font-size:17px; color:var(--ink-soft); max-width:640px; margin-bottom:48px;}
+.reveal{opacity:0; transform:translateY(22px); transition:opacity .7s ease, transform .7s ease;}
+.reveal.in{opacity:1; transform:translateY(0);}
+
+/* ---------- CHAOS / CONTROL ---------- */
+.chaos-control{display:grid; grid-template-columns:1fr auto 1fr; gap:28px; align-items:stretch;}
+@media(max-width:760px){.chaos-control{grid-template-columns:1fr;} .cc-arrow{transform:rotate(90deg); margin:6px auto;}}
+.cc-col{border:1px solid var(--line-strong); border-radius:4px; padding:32px 30px;}
+.cc-chaos{background:#EFE6DD; border-color:rgba(165,88,58,0.3);}
+.cc-order{background:var(--card); border-color:rgba(78,107,91,0.3);}
+.cc-tag{font-family:var(--mono); font-size:11.5px; letter-spacing:0.12em; text-transform:uppercase; color:var(--clay-deep); border:1px solid var(--clay); padding:3px 10px; border-radius:20px; display:inline-block; margin-bottom:18px;}
+.cc-tag-sage{color:var(--sage-deep); border-color:var(--sage);}
+.cc-list{list-style:none; display:flex; flex-direction:column; gap:16px; font-size:15px; color:var(--ink-soft);}
+.cc-list strong{color:var(--ink); display:block; font-family:var(--serif); font-size:16.5px; font-weight:600; margin-bottom:2px;}
+.cc-arrow{display:flex; align-items:center; font-size:26px; color:var(--sage-mist);}
+
+/* ---------- HUB DIAGRAM ---------- */
+.hub{position:relative; max-width:640px; margin:0 auto; aspect-ratio:1/1; display:grid; place-items:center;}
+.hub-core{
+  width:190px; height:190px; border-radius:50%; background:var(--sage-deep); color:#F6F4E9;
+  display:flex; align-items:center; justify-content:center; text-align:center;
+  font-family:var(--serif); font-weight:600; font-size:16px; line-height:1.3; z-index:2;
+  box-shadow:0 0 0 1px rgba(78,107,91,0.25), 0 20px 40px -18px rgba(32,43,34,0.5);
+}
+.hub-node{
+  position:absolute; width:150px; text-align:center; font-size:13.5px; font-weight:500; color:var(--ink-soft);
+  display:flex; flex-direction:column; align-items:center; gap:8px;
+}
+.hub-ic{width:44px; height:44px; border-radius:50%; background:var(--card); border:1px solid var(--line-strong); display:flex; align-items:center; justify-content:center; font-size:18px; color:var(--sage);}
+.n1{top:2%; left:50%; transform:translateX(-50%);}
+.n2{top:20%; right:0%;}
+.n3{bottom:20%; right:2%;}
+.n4{bottom:2%; left:50%; transform:translateX(-50%);}
+.n5{top:20%; left:0%;}
+@media(max-width:600px){
+  .hub{aspect-ratio:auto; display:flex; flex-wrap:wrap; justify-content:center; gap:22px; max-width:420px;}
+  .hub-core{order:0; width:100%; height:auto; padding:24px; border-radius:6px;}
+  .hub-node{position:static; width:130px;}
+}
+
+/* ---------- TWO COLUMN / FEATURES ---------- */
+.two-col{display:grid; grid-template-columns:1fr 1fr; gap:64px; align-items:start;}
+@media(max-width:900px){.two-col{grid-template-columns:1fr;}}
+.feat-cols{display:grid; grid-template-columns:1fr 1fr; gap:30px;}
+@media(max-width:520px){.feat-cols{grid-template-columns:1fr;}}
+.feat-h{font-size:15.5px; font-weight:600; margin-bottom:14px; color:var(--sage-deep);}
+.check-list{list-style:none; display:flex; flex-direction:column; gap:12px; font-size:14.5px; color:var(--ink-soft);}
+.check-list li{position:relative; padding-left:20px;}
+.check-list li::before{content:"·"; position:absolute; left:0; color:var(--clay); font-weight:700; font-size:20px; line-height:0.8;}
+
+/* ---------- RESIDENT CARD ---------- */
+.resident-card{background:var(--card); border:1px solid var(--line-strong); border-radius:4px; padding:28px; box-shadow:var(--shadow);}
+.rc-head{display:flex; align-items:center; gap:14px; margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid var(--line);}
+.rc-avatar{width:52px; height:52px; border-radius:50%; background:var(--sage-mist); color:var(--sage-deep); display:flex; align-items:center; justify-content:center; font-family:var(--serif); font-weight:600; font-size:16px;}
+.rc-name{font-family:var(--serif); font-weight:600; font-size:19px; color:var(--sage-deep);}
+.rc-status{font-size:12px; color:var(--sage); font-family:var(--mono);}
+.rc-grid{display:grid; grid-template-columns:1fr 1fr; gap:22px;}
+@media(max-width:440px){.rc-grid{grid-template-columns:1fr;}}
+.rc-label{font-family:var(--mono); font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--clay-deep); display:block; margin-bottom:12px;}
+.rc-block dl div{display:flex; flex-direction:column; margin-bottom:10px;}
+.rc-block dt{font-size:11.5px; color:var(--ink-soft);}
+.rc-block dd{font-size:14px; color:var(--ink); font-weight:500;}
+
+/* ---------- FINANCE BAR CHART ---------- */
+.finance-chart{background:var(--card); border:1px solid var(--line-strong); border-radius:4px; padding:32px; box-shadow:var(--shadow);}
+.bars{display:flex; align-items:flex-end; gap:26px; height:220px; margin-top:26px;}
+.bar-item{flex:1; display:flex; flex-direction:column; align-items:center; height:100%; justify-content:flex-end;}
+.bar{width:100%; max-width:64px; height:var(--h); border-radius:2px 2px 0 0; transform:scaleY(0); transform-origin:bottom; transition:transform 1s cubic-bezier(.2,.8,.2,1);}
+.reveal.in .bar{transform:scaleY(1);}
+.bar-val{font-family:var(--mono); font-size:13px; margin-top:10px; color:var(--ink);}
+.bar-name{font-size:12.5px; color:var(--ink-soft); margin-top:2px;}
+
+/* ---------- EXPENSE TAGS ---------- */
+.expense-grid{display:flex; flex-wrap:wrap; gap:12px; margin-bottom:48px;}
+.exp-tag{border:1px solid var(--line-strong); background:var(--card); padding:10px 18px; border-radius:30px; font-size:14px; font-weight:500; color:var(--sage-deep);}
+.feature-strip{display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--line-strong); border:1px solid var(--line-strong);}
+@media(max-width:820px){.feature-strip{grid-template-columns:1fr 1fr;}}
+@media(max-width:480px){.feature-strip{grid-template-columns:1fr;}}
+.fs-item{background:var(--bg-deep); padding:26px 22px; font-size:13.5px; color:var(--ink-soft);}
+.fs-item strong{display:block; font-family:var(--serif); font-weight:600; font-size:16px; color:var(--sage-deep); margin-bottom:8px;}
+
+/* ---------- MINI PANELS ---------- */
+.panel-mini{background:var(--card); border:1px solid var(--line-strong); border-radius:4px; padding:22px 24px; box-shadow:var(--shadow);}
+.pm-head{display:flex; justify-content:space-between; font-family:var(--serif); font-weight:600; color:var(--sage-deep); font-size:16px; margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid var(--line);}
+.pm-head span{font-family:var(--mono); font-size:11.5px; color:var(--ink-soft); font-weight:400;}
+.pm-row{display:flex; justify-content:space-between; align-items:center; padding:10px 0; font-size:14px; border-bottom:1px solid var(--line);}
+.pm-tag{font-family:var(--mono); font-size:11.5px; color:var(--ink-soft);}
+.pm-tag-warn{color:var(--clay-deep); border:1px solid var(--clay); padding:2px 8px; border-radius:20px;}
+.pm-warn span:first-child{color:var(--clay-deep);}
+.pm-note{font-size:13px; color:var(--ink-soft); margin-top:16px; line-height:1.5;}
+
+/* ---------- REPORTS ---------- */
+.reports-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:24px;}
+@media(max-width:900px){.reports-grid{grid-template-columns:1fr;}}
+.report-card{background:var(--card); border:1px solid var(--line-strong); border-radius:4px; padding:24px; box-shadow:var(--shadow);}
+.donut{width:130px; height:130px; border-radius:50%; margin:22px auto 20px;
+  background:conic-gradient(var(--sage-deep) 0% 45%, var(--sage) 45% 65%, var(--sage-mist) 65% 80%, var(--gold) 80% 90%, var(--clay) 90% 100%);
+  position:relative;}
+.donut::after{content:""; position:absolute; inset:24px; background:var(--card); border-radius:50%;}
+.donut-legend{list-style:none; font-size:12.5px; color:var(--ink-soft); display:flex; flex-direction:column; gap:8px;}
+.donut-legend li{display:flex; align-items:center; gap:8px;}
+.donut-legend span{width:9px; height:9px; border-radius:2px; display:inline-block;}
+
+.mini-bars{display:flex; justify-content:space-around; align-items:flex-end; height:170px; margin-top:24px;}
+.mb-group{display:flex; gap:5px; align-items:flex-end; height:100%; position:relative; flex-direction:column-reverse;}
+.mb-group{display:flex; flex-direction:column; align-items:center; height:100%; justify-content:flex-end; gap:6px; width:60px;}
+.mb-bar{width:16px; height:var(--h); border-radius:2px 2px 0 0; display:inline-block;}
+.mb-group > span{font-size:11.5px; color:var(--ink-soft); margin-top:4px;}
+
+.mini-table{width:100%; border-collapse:collapse; margin-top:18px; font-size:13px;}
+.mini-table th{text-align:left; font-family:var(--mono); font-size:10.5px; letter-spacing:0.06em; text-transform:uppercase; color:var(--ink-soft); padding-bottom:10px; border-bottom:1px solid var(--line-strong); font-weight:500;}
+.mini-table td{padding:10px 4px; border-bottom:1px solid var(--line); color:var(--ink);}
+.mini-table td:last-child{color:var(--clay-deep); font-family:var(--mono); font-size:12px;}
+
+/* ---------- CALENDAR MOCK ---------- */
+.calendar-mock{background:var(--card); border:1px solid var(--line-strong); border-radius:4px; padding:26px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:2px;}
+.cal-row{display:flex; align-items:center; gap:12px; padding:14px 8px; font-size:14px; border-bottom:1px solid var(--line);}
+.cal-row:last-child{border-bottom:none;}
+.cal-dot{width:8px; height:8px; border-radius:50%; flex-shrink:0;}
+
+/* ---------- DASHBOARD (dark echo) ---------- */
+.dash-section{background:var(--sage-deep); color:#EFEAD6;}
+.dash-title, .dash-lead{color:#EFEAD6;}
+.dash-lead{color:#C9D6CC;}
+.dash-full{
+  margin-top:20px; display:grid; grid-template-columns:1fr 1fr; gap:1px;
+  background:rgba(239,234,214,0.14); border:1px solid rgba(239,234,214,0.14); border-radius:4px; overflow:hidden;
+}
+@media(max-width:760px){.dash-full{grid-template-columns:1fr;}}
+.dash-stat, .dash-chart-block, .dash-alerts{background:#2C4038; padding:26px 28px;}
+.dash-stat .stat-label{color:#B7C6BB;}
+.dash-stat .stat-value{color:#F4EFDC; font-size:34px;}
+.dash-full .stat-clay{color:#E3A788;}
+.spark-big{width:100%; height:80px; margin-top:14px;}
+.dash-alerts .panel-chart-label, .dash-chart-block .panel-chart-label{color:#B7C6BB; font-size:12px;}
+.panel-alerts-dark{margin-top:14px; color:#DDE5DF;}
+
+/* ---------- PILLARS ---------- */
+.pillar-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:2px; background:var(--line-strong); border:1px solid var(--line-strong); margin-top:44px;}
+@media(max-width:820px){.pillar-grid{grid-template-columns:1fr;}}
+.pillar{background:var(--bg); padding:38px 32px;}
+.pillar h3{font-size:19px; margin-bottom:12px;}
+.pillar p{font-size:14.5px; color:var(--ink-soft);}
+
+/* ---------- CTA / FOOTER ---------- */
+.cta-section{background:var(--bg-deep); text-align:center;}
+.cta-wrap{max-width:640px;}
+.cta-section .section-title em{font-style:italic; color:var(--clay-deep); font-weight:500;}
+.cta-section .section-lead{text-align:center;}
+.footer{padding:36px 0; border-top:1px solid var(--line);}
+.footer-inner{display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;}
+.footer-note{font-size:13px; color:var(--ink-soft);}
+</style>
+</head>
+<body>
+
+<header class="nav" id="nav">
+  <div class="wrap nav-inner">
+    <a href="#top" class="logo">
+      <span class="logo-mark" aria-hidden="true">
+        <svg viewBox="0 0 40 40" width="30" height="30"><path d="M11 24a7 7 0 0 1 1-13.9A9 9 0 0 1 29 13a6 6 0 0 1-1 12H11a5 5 0 0 1 0-10.9" fill="none" stroke="var(--sage-deep)" stroke-width="2.4" stroke-linejoin="round"/></svg>
+      </span>
+      <span class="logo-text">Eficiencia<em>Cloud</em></span>
+    </a>
+    <nav class="nav-links">
+      <a href="#solucion">Solución</a>
+      <a href="#residentes">Cuidado</a>
+      <a href="#finanzas">Finanzas</a>
+      <a href="#mando-central">Dashboard</a>
+    </nav>
+    <a href="#cta" class="btn btn-primary nav-cta">Solicitar demo</a>
+  </div>
+</header>
+
+<main id="top">
+
+<section class="hero">
+  <div class="hero-rings" aria-hidden="true"></div>
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <p class="eyebrow">Software para residencias de ancianos</p>
+      <h1>Del caos<br><em>al control.</em></h1>
+      <p class="hero-sub">Un ecosistema que une el cuidado del residente, las finanzas, el inventario y el personal en un mismo lugar — para que su equipo dedique el tiempo a las personas, no al papeleo.</p>
+      <div class="hero-actions">
+        <a href="#cta" class="btn btn-primary">Solicitar una demo</a>
+        <a href="#solucion" class="btn btn-ghost">Ver cómo funciona</a>
+      </div>
+    </div>
+
+    <div class="hero-panel" role="img" aria-label="Vista previa del panel de mando con ocupación, pagos pendientes y alertas en tiempo real">
+      <div class="panel-card">
+        <div class="panel-head">
+          <span class="panel-dot"></span>
+          <span class="panel-title">Mando Central</span>
+          <span class="panel-live">EN VIVO</span>
+        </div>
+        <div class="panel-stats">
+          <div class="stat">
+            <span class="stat-label">Ocupación actual</span>
+            <span class="stat-value" data-count="45" data-suffix="/50">0</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Pagos pendientes</span>
+            <span class="stat-value stat-clay" data-count="8250" data-prefix="€">0</span>
+          </div>
+        </div>
+        <div class="panel-chart">
+          <svg viewBox="0 0 300 70" preserveAspectRatio="none" class="spark">
+            <polyline points="0,55 30,48 60,50 90,38 120,42 150,26 180,32 210,18 240,24 270,10 300,16" fill="none" stroke="var(--sage)" stroke-width="2.5"/>
+          </svg>
+          <span class="panel-chart-label">Gastos del mes</span>
+        </div>
+        <ul class="panel-alerts">
+          <li><span class="alert-dot alert-amber"></span>Bajo stock de Paracetamol</li>
+          <li><span class="alert-dot alert-clay"></span>3 pagos vencidos</li>
+          <li><span class="alert-dot alert-sage"></span>Cumpleaños: Roberto Pérez</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section problem">
+  <div class="wrap">
+    <p class="eyebrow">El problema</p>
+    <h2 class="section-title">¿Le resulta familiar<br>la gestión fragmentada?</h2>
+    <p class="section-lead">La administración de una residencia es compleja. Depender de hojas de cálculo, archivos en papel y sistemas desconectados genera riesgos, ineficiencias y estrés — para su equipo y para las familias que confían en usted.</p>
+
+    <div class="chaos-control">
+      <div class="cc-col cc-chaos">
+        <span class="cc-tag">Caos</span>
+        <ul class="cc-list">
+          <li><strong>Riesgo de errores</strong> en datos críticos de salud y pagos.</li>
+          <li><strong>Falta de visibilidad</strong> financiera en tiempo real.</li>
+          <li><strong>Pérdida de tiempo</strong> en tareas administrativas repetitivas.</li>
+        </ul>
+      </div>
+      <div class="cc-arrow" aria-hidden="true">→</div>
+      <div class="cc-col cc-order">
+        <span class="cc-tag cc-tag-sage">Control</span>
+        <ul class="cc-list">
+          <li><strong>Un solo registro</strong> confiable para cada residente.</li>
+          <li><strong>Estado financiero</strong> claro, al instante.</li>
+          <li><strong>Procesos automáticos</strong> que liberan tiempo para el cuidado.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section ecosystem" id="solucion">
+  <div class="wrap">
+    <p class="eyebrow">La solución</p>
+    <h2 class="section-title">Un ecosistema único,<br>centralizado e inteligente.</h2>
+    <p class="section-lead">Todas las áreas críticas de su operación en una sola plataforma. Una visión de 360°, procesos automatizados, y más tiempo para lo que realmente importa.</p>
+
+    <div class="hub" role="img" aria-label="Diagrama del sistema con cinco módulos: residentes y cuidado, finanzas, personal, inventario, y reportes, conectados a un núcleo central">
+      <div class="hub-core">Sistema de<br>Gestión<br>Integral</div>
+      <div class="hub-node n1"><span class="hub-ic">◐</span>Residentes<br>y Cuidado</div>
+      <div class="hub-node n2"><span class="hub-ic">◑</span>Finanzas<br>(Ingresos y Egresos)</div>
+      <div class="hub-node n3"><span class="hub-ic">◒</span>Personal</div>
+      <div class="hub-node n4"><span class="hub-ic">◓</span>Reportes y<br>Administración</div>
+      <div class="hub-node n5"><span class="hub-ic">◔</span>Inventario</div>
+    </div>
+  </div>
+</section>
+
+<section class="section section-alt" id="residentes">
+  <div class="wrap two-col">
+    <div>
+      <p class="eyebrow">Cuidado del residente</p>
+      <h2 class="section-title">Cuidado centrado<br>en la persona.</h2>
+      <p class="section-lead" style="margin-bottom:38px;">Un registro digital completo y seguro para cada residente, accesible al instante por el personal autorizado.</p>
+
+      <div class="feat-cols">
+        <div>
+          <h3 class="feat-h">Perfil del residente</h3>
+          <ul class="check-list">
+            <li>Datos personales, DNI, fecha de nacimiento, foto.</li>
+            <li>Contactos de emergencia y familiares responsables.</li>
+            <li>Fecha de ingreso y estado (activo, temporal, egresado).</li>
+            <li>Habitación asignada.</li>
+          </ul>
+        </div>
+        <div>
+          <h3 class="feat-h">Información de cuidado</h3>
+          <ul class="check-list">
+            <li>Historial médico básico: alergias, medicamentos crónicos.</li>
+            <li>Contacto directo del médico de cabecera.</li>
+            <li>Nivel de atención requerido: básico, intermedio, intensivo.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="resident-card">
+      <div class="rc-head">
+        <div class="rc-avatar" aria-hidden="true">ER</div>
+        <div>
+          <div class="rc-name">Elena Rodríguez</div>
+          <span class="rc-status">● Activo</span>
+        </div>
+      </div>
+      <div class="rc-grid">
+        <div class="rc-block">
+          <span class="rc-label">Perfil</span>
+          <dl>
+            <div><dt>Fecha de nacimiento</dt><dd>12/04/1940</dd></div>
+            <div><dt>DNI</dt><dd>12345678X</dd></div>
+            <div><dt>Contacto emergencia</dt><dd>Ana García (Hija)</dd></div>
+            <div><dt>Ingreso</dt><dd>15/01/2023</dd></div>
+            <div><dt>Habitación</dt><dd>102</dd></div>
+          </dl>
+        </div>
+        <div class="rc-block">
+          <span class="rc-label">Cuidado</span>
+          <dl>
+            <div><dt>Alergias</dt><dd>Penicilina</dd></div>
+            <div><dt>Medicamentos</dt><dd>Metformina, Enalapril</dd></div>
+            <div><dt>Médico cabecera</dt><dd>Dr. Juan Pérez</dd></div>
+            <div><dt>Nivel de atención</dt><dd>Intermedio</dd></div>
+          </dl>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="finanzas">
+  <div class="wrap two-col">
+    <div class="finance-chart">
+      <span class="rc-label">Ingresos por categoría — Julio</span>
+      <div class="bars" role="img" aria-label="Cuotas de residentes 22.500 euros, donaciones 4.500 euros, servicios adicionales 9.000 euros">
+        <div class="bar-item"><div class="bar" style="--h:100%; background:var(--sage-deep);"></div><span class="bar-val">€22.500</span><span class="bar-name">Cuotas</span></div>
+        <div class="bar-item"><div class="bar" style="--h:20%; background:var(--gold);"></div><span class="bar-val">€4.500</span><span class="bar-name">Donaciones</span></div>
+        <div class="bar-item"><div class="bar" style="--h:40%; background:var(--sage-mist);"></div><span class="bar-val">€9.000</span><span class="bar-name">Servicios</span></div>
+      </div>
+    </div>
+
+    <div>
+      <p class="eyebrow">Salud financiera</p>
+      <h2 class="section-title">Flujos de ingreso<br>claros y predecibles.</h2>
+      <p class="section-lead" style="margin-bottom:30px;">Gestione de forma centralizada todas las fuentes de ingreso, desde las cuotas mensuales hasta las donaciones, con una facturación precisa y un seguimiento riguroso de los pagos.</p>
+      <ul class="check-list" style="gap:14px; font-size:15px;">
+        <li>Cuenta corriente por residente: plan contratado, pagos recibidos y pendientes.</li>
+        <li>Estado de cuenta actual generado al instante — saldo o deuda.</li>
+        <li>Alertas automáticas de pagos próximos a vencer.</li>
+        <li>Historial completo de transacciones y registro de donaciones, subvenciones y servicios adicionales.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="section section-alt">
+  <div class="wrap">
+    <p class="eyebrow">Control de gastos</p>
+    <h2 class="section-title">Control total sobre<br>cada gasto operativo.</h2>
+    <p class="section-lead">Categorice, supervise y analice cada egreso para optimizar el presupuesto y eliminar gastos innecesarios. Un registro impecable para auditorías y planificación.</p>
+
+    <div class="expense-grid">
+      <div class="exp-tag">Personal</div>
+      <div class="exp-tag">Alimentación</div>
+      <div class="exp-tag">Suministros médicos</div>
+      <div class="exp-tag">Servicios básicos</div>
+      <div class="exp-tag">Mantenimiento</div>
+      <div class="exp-tag">Seguros</div>
+      <div class="exp-tag">Impuestos</div>
+      <div class="exp-tag">Otros</div>
+    </div>
+
+    <div class="feature-strip">
+      <div class="fs-item"><strong>Registro completo</strong>Fecha, monto, proveedor y categoría en cada movimiento.</div>
+      <div class="fs-item"><strong>Comprobantes digitales</strong>Adjunte facturas y recibos escaneados a cada gasto.</div>
+      <div class="fs-item"><strong>Método de pago</strong>Controle efectivo, transferencia o tarjeta por transacción.</div>
+      <div class="fs-item"><strong>Notas descriptivas</strong>Contexto claro para cada movimiento registrado.</div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <p class="eyebrow">Operación diaria</p>
+    <h2 class="section-title">Operaciones sin sorpresas.</h2>
+    <p class="section-lead">Asegure la disponibilidad de insumos críticos y centralice la información de su equipo, todo en un mismo lugar.</p>
+
+    <div class="two-col">
+      <div class="panel-mini">
+        <div class="pm-head">Inventario <span>Buscar…</span></div>
+        <div class="pm-row"><span>Paracetamol 500mg</span><span class="pm-tag">450 cajas</span></div>
+        <div class="pm-row"><span>Guantes de nitrilo</span><span class="pm-tag">120 cajas</span></div>
+        <div class="pm-row pm-warn"><span>Alcohol gel 5L</span><span class="pm-tag pm-tag-warn">Bajo stock</span></div>
+        <div class="pm-row"><span>Vendas elásticas</span><span class="pm-tag">120 cajas</span></div>
+        <p class="pm-note">Alertas automáticas de reposición para niveles bajos de medicamentos, suministros médicos, alimentos no perecederos y equipamiento.</p>
+      </div>
+
+      <div class="panel-mini">
+        <div class="pm-head">Horario de personal <span>Mayo 2026</span></div>
+        <div class="pm-row"><span>María G. — Enfermera</span><span class="pm-tag">Mañana</span></div>
+        <div class="pm-row"><span>Ana R. — Cuidadora</span><span class="pm-tag">Tarde</span></div>
+        <div class="pm-row"><span>Luis A. — Cuidador</span><span class="pm-tag">Noche</span></div>
+        <div class="pm-row"><span>Rubén L.</span><span class="pm-tag pm-tag-warn">Vacaciones</span></div>
+        <p class="pm-note">Registro completo de empleados, control de asistencia, turnos, vacaciones, permisos e historial de pagos.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section section-alt">
+  <div class="wrap">
+    <p class="eyebrow">Configuración y seguridad</p>
+    <h2 class="section-title">Adaptable a su realidad,<br>con la máxima seguridad.</h2>
+    <p class="section-lead">Configure el sistema para que se ajuste a sus procesos y tarifas específicas. Opere con la tranquilidad de que su información está protegida.</p>
+
+    <div class="feature-strip" style="grid-template-columns:repeat(4,1fr);">
+      <div class="fs-item"><strong>Planes y tarifas</strong>Defina sus propios planes, tarifas y categorías de gasto.</div>
+      <div class="fs-item"><strong>Métodos de pago</strong>Gestione los métodos aceptados y días de vencimiento.</div>
+      <div class="fs-item"><strong>Accesos por rol</strong>Administrador, contador, recepcionista — cada uno con su vista.</div>
+      <div class="fs-item"><strong>Respaldo automático</strong>Base de datos segura con acceso web y móvil.</div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <p class="eyebrow">Inteligencia de negocio</p>
+    <h2 class="section-title">De los datos<br>a las decisiones.</h2>
+    <p class="section-lead">Genere reportes claros y visuales para entender la salud de su residencia, identificar tendencias y planificar el futuro. Todo exportable a Excel y PDF.</p>
+
+    <div class="reports-grid">
+      <div class="report-card">
+        <span class="rc-label">Distribución de egresos</span>
+        <div class="donut" role="img" aria-label="Personal 45%, suministros 20%, alimentación 15%, servicios 10%, otros 10%"></div>
+        <ul class="donut-legend">
+          <li><span style="background:var(--sage-deep)"></span>Personal — 45%</li>
+          <li><span style="background:var(--sage)"></span>Suministros — 20%</li>
+          <li><span style="background:var(--sage-mist)"></span>Alimentación — 15%</li>
+          <li><span style="background:var(--gold)"></span>Servicios — 10%</li>
+          <li><span style="background:var(--clay)"></span>Otros — 10%</li>
+        </ul>
+      </div>
+
+      <div class="report-card">
+        <span class="rc-label">Balance mensual</span>
+        <div class="mini-bars" role="img" aria-label="Ingresos y egresos de mayo a julio">
+          <div class="mb-group"><div class="mb-bar" style="--h:100%;background:var(--sage-deep)"></div><div class="mb-bar" style="--h:60%;background:var(--gold)"></div><span>Mayo</span></div>
+          <div class="mb-group"><div class="mb-bar" style="--h:90%;background:var(--sage-deep)"></div><div class="mb-bar" style="--h:68%;background:var(--gold)"></div><span>Junio</span></div>
+          <div class="mb-group"><div class="mb-bar" style="--h:96%;background:var(--sage-deep)"></div><div class="mb-bar" style="--h:74%;background:var(--gold)"></div><span>Julio</span></div>
+        </div>
+      </div>
+
+      <div class="report-card">
+        <span class="rc-label">Reporte de morosidad</span>
+        <table class="mini-table">
+          <thead><tr><th>Residente</th><th>Pendiente</th><th>Atraso</th></tr></thead>
+          <tbody>
+            <tr><td>Ana García</td><td>€150.00</td><td>15 días</td></tr>
+            <tr><td>María Rodríguez</td><td>€200.00</td><td>20 días</td></tr>
+            <tr><td>Carlos López</td><td>€75.50</td><td>7 días</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section section-alt">
+  <div class="wrap two-col">
+    <div>
+      <p class="eyebrow">Anticípese</p>
+      <h2 class="section-title">No solo reaccione.</h2>
+      <p class="section-lead" style="margin-bottom:30px;">El sistema trabaja para usted, enviando notificaciones inteligentes y organizando su agenda para que nada importante se pase por alto.</p>
+      <div class="feat-cols">
+        <div>
+          <h3 class="feat-h">Notificaciones automáticas</h3>
+          <ul class="check-list">
+            <li>Recordatorios de pagos vencidos.</li>
+            <li>Alertas de bajo stock en inventario.</li>
+            <li>Avisos de cumpleaños de residentes.</li>
+            <li>Alertas de vencimiento de documentos.</li>
+          </ul>
+        </div>
+        <div>
+          <h3 class="feat-h">Calendario integrado</h3>
+          <ul class="check-list">
+            <li>Visión centralizada de actividades programadas.</li>
+            <li>Agendamiento de visitas médicas y eventos.</li>
+            <li>Programación de pagos a proveedores.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="calendar-mock" aria-hidden="true">
+      <div class="cal-row"><span class="cal-dot" style="background:var(--sage)"></span>Visita médica — Hab. 102</div>
+      <div class="cal-row"><span class="cal-dot" style="background:var(--gold)"></span>Cumpleaños Roberto Pérez</div>
+      <div class="cal-row"><span class="cal-dot" style="background:var(--clay)"></span>Pago proveedor — Farmacia Sur</div>
+      <div class="cal-row"><span class="cal-dot" style="background:var(--sage-mist)"></span>Taller de fisioterapia grupal</div>
+      <div class="cal-row"><span class="cal-dot" style="background:var(--sage)"></span>Renovación seguro médico</div>
+    </div>
+  </div>
+</section>
+
+<section class="section dash-section" id="mando-central">
+  <div class="wrap">
+    <p class="eyebrow" style="color:#E3D9A8;">Vista general</p>
+    <h2 class="section-title dash-title">Todo su albergue,<br>en una sola mirada.</h2>
+    <p class="section-lead dash-lead">Inicie su día con una vista completa y en tiempo real del estado de su residencia. El Mando Central resume la información más crítica para tomar decisiones informadas al instante.</p>
+
+    <div class="dash-full">
+      <div class="dash-stat">
+        <span class="stat-label">Ocupación actual</span>
+        <span class="stat-value" data-count="45" data-suffix="/50">0</span>
+      </div>
+      <div class="dash-stat">
+        <span class="stat-label">Pagos pendientes este mes</span>
+        <span class="stat-value stat-clay" data-count="8250" data-prefix="€">0</span>
+      </div>
+      <div class="dash-chart-block">
+        <span class="panel-chart-label">Gastos del mes</span>
+        <svg viewBox="0 0 400 90" preserveAspectRatio="none" class="spark spark-big">
+          <polyline points="0,70 40,60 80,64 120,45 160,52 200,30 240,38 280,20 320,28 360,10 400,18" fill="none" stroke="#DCE7DE" stroke-width="2.5"/>
+        </svg>
+      </div>
+      <div class="dash-alerts">
+        <span class="panel-chart-label">Alertas importantes</span>
+        <ul class="panel-alerts panel-alerts-dark">
+          <li><span class="alert-dot alert-amber"></span>Bajo stock de Medicamento X</li>
+          <li><span class="alert-dot alert-clay"></span>3 pagos vencidos</li>
+          <li><span class="alert-dot alert-sage"></span>Cumpleaños: Roberto Pérez</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section pillars">
+  <div class="wrap">
+    <p class="eyebrow">En resumen</p>
+    <h2 class="section-title">Un ecosistema integrado para<br>la excelencia en cuidado y gestión.</h2>
+
+    <div class="pillar-grid">
+      <div class="pillar">
+        <h3>Excelencia operativa</h3>
+        <p>Automatice tareas, reduzca errores y libere tiempo para su equipo y sus residentes.</p>
+      </div>
+      <div class="pillar">
+        <h3>Salud financiera sostenible</h3>
+        <p>Maximice ingresos, controle gastos y obtenga visibilidad financiera total en tiempo real.</p>
+      </div>
+      <div class="pillar">
+        <h3>Cuidado centrado en el residente</h3>
+        <p>Garantice la seguridad y el bienestar con información precisa, accesible y centralizada.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section cta-section" id="cta">
+  <div class="wrap cta-wrap">
+    <h2 class="section-title" style="margin-bottom:16px;">¿Listo para pasar<br><em>del caos al control?</em></h2>
+    <p class="section-lead" style="margin:0 auto 34px;">Agende una demostración y descubra cómo Eficiencia Cloud puede transformar la gestión de su residencia.</p>
+    <div class="hero-actions" style="justify-content:center;">
+      <a href="mailto:hola@eficienciacloud.com" class="btn btn-primary">Solicitar una demo</a>
+      <a href="#solucion" class="btn btn-ghost">Volver arriba</a>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="wrap footer-inner">
+    <span class="logo-text">Eficiencia<em>Cloud</em></span>
+    <span class="footer-note">Sistema de gestión integral para residencias de ancianos.</span>
+  </div>
+</footer>
+
+</main>
+
+<script>
+// Reveal on scroll
+const revealEls = document.querySelectorAll('.section, .hero-panel, .resident-card, .finance-chart, .report-card, .panel-mini, .calendar-mock, .dash-full, .pillar-grid');
+revealEls.forEach(el => el.classList.add('reveal'));
+const io = new IntersectionObserver((entries) => {
+  entries.forEach(entry => { if(entry.isIntersecting){ entry.target.classList.add('in'); io.unobserve(entry.target); } });
+}, { threshold: 0.12 });
+revealEls.forEach(el => io.observe(el));
+
+// Animated counters
+function animateCount(el){
+  const target = parseFloat(el.dataset.count);
+  const prefix = el.dataset.prefix || '';
+  const suffix = el.dataset.suffix || '';
+  const isDecimalFree = Number.isInteger(target);
+  let start = null;
+  const duration = 1400;
+  function step(ts){
+    if(!start) start = ts;
+    const progress = Math.min((ts - start) / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const val = Math.round(target * eased);
+    el.textContent = prefix + val.toLocaleString('es-ES') + suffix;
+    if(progress < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+const counters = document.querySelectorAll('[data-count]');
+const cio = new IntersectionObserver((entries) => {
+  entries.forEach(entry => { if(entry.isIntersecting){ animateCount(entry.target); cio.unobserve(entry.target); } });
+}, { threshold: 0.4 });
+counters.forEach(c => cio.observe(c));
+</script>
+
+</body>
+</html>
