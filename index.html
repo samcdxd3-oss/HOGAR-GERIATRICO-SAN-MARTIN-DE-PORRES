@@ -185,6 +185,31 @@ tr:last-child td{border-bottom:none;}
 .file-field{border:1px dashed var(--line-strong); border-radius:5px; padding:10px 12px; background:var(--card);}
 
 .badge-count{background:var(--warn); color:#fff; font-family:var(--mono); font-size:10px; padding:1px 6px; border-radius:10px; margin-left:auto;}
+
+/* ---------- DASHBOARD HUB (menú circular) ---------- */
+.dash-hub{position:relative; max-width:560px; margin:0 auto; aspect-ratio:1/1; display:grid; place-items:center;}
+.dash-hub-ring{position:absolute; inset:8%; border-radius:50%; background:conic-gradient(var(--teal) 0deg 180deg, var(--navy) 180deg 360deg); opacity:0.14;}
+.dash-hub-ring::after{content:""; position:absolute; inset:14%; border-radius:50%; background:var(--card);}
+.dash-hub-core{position:relative; z-index:2; width:96px; height:96px; border-radius:50%; background:#fff; display:flex; align-items:center; justify-content:center; box-shadow:0 14px 30px -14px rgba(14,71,150,0.4);}
+.dash-hub-node{
+  all:unset; position:absolute; width:140px; text-align:center; font-size:12.5px; font-weight:600; color:var(--navy);
+  display:flex; flex-direction:column; align-items:center; gap:8px; line-height:1.3; cursor:pointer; transition:transform .2s ease;
+}
+.dash-hub-node:hover{transform:translateY(-3px);}
+.dash-hub-node:hover .dash-hub-ic{border-color:var(--teal); box-shadow:0 10px 20px -10px rgba(0,150,172,0.4);}
+.dash-hub-ic{width:46px; height:46px; border-radius:12px; background:#fff; border:1px solid var(--line-strong); display:flex; align-items:center; justify-content:center; box-shadow:0 6px 14px -10px rgba(14,71,150,0.3); transition:all .2s ease;}
+.dhn-1{top:2%; left:50%; transform:translateX(-50%);}
+.dhn-2{top:20%; right:-2%;}
+.dhn-3{bottom:20%; right:0%;}
+.dhn-4{bottom:2%; left:50%; transform:translateX(-50%);}
+.dhn-5{bottom:20%; left:0%;}
+.dhn-6{top:20%; left:-2%;}
+@media(max-width:620px){
+  .dash-hub{aspect-ratio:auto; display:flex; flex-wrap:wrap; justify-content:center; gap:20px 14px; max-width:380px;}
+  .dash-hub-ring{display:none;}
+  .dash-hub-core{order:0; flex-basis:100%; margin-bottom:4px;}
+  .dash-hub-node{position:static; width:100px;}
+}
 </style>
 </head>
 <body>
@@ -239,6 +264,45 @@ tr:last-child td{border-bottom:none;}
 
       <!-- DASHBOARD -->
       <section class="view active" id="view-dashboard">
+
+        <div class="card" style="padding:34px 20px; margin-bottom:26px;">
+          <p class="eyebrow" style="text-align:center; justify-content:center; margin-bottom:6px;">Menú principal</p>
+          <h2 style="text-align:center; font-size:20px; margin-bottom:26px;">Un sistema, seis áreas de gestión.</h2>
+          <div class="dash-hub" role="navigation" aria-label="Accesos directos a los módulos">
+            <div class="dash-hub-ring" aria-hidden="true"></div>
+            <div class="dash-hub-core" aria-hidden="true">
+              <svg viewBox="0 0 100 100" width="78" height="78">
+                <circle cx="50" cy="50" r="50" fill="var(--teal)"/>
+                <g fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="38" cy="30" r="6.2" fill="#fff" stroke="none"/>
+                  <path d="M38 38 C 30 40, 27 48, 28 58 M38 38 C 46 40, 49 48, 47 58 M30 47 L46 47"/>
+                  <circle cx="63" cy="34" r="5.6" fill="#fff" stroke="none"/>
+                  <path d="M63 41 C 56 44, 53 52, 55 62 M63 41 C 70 44, 73 50, 71 58 M56 50 L70 50"/>
+                  <path d="M47 58 C 52 62, 58 62, 63 58" stroke-width="3.2"/>
+                </g>
+              </svg>
+            </div>
+            <button type="button" class="dash-hub-node dhn-1" onclick="switchView('finanzas')"><span class="dash-hub-ic">
+              <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="var(--navy)" stroke-width="1.7"><rect x="4" y="3" width="16" height="18" rx="1.5"/><line x1="7" y1="7" x2="17" y2="7"/><line x1="7" y1="11" x2="9.5" y2="11"/><line x1="12" y1="11" x2="14.5" y2="11"/><line x1="7" y1="15" x2="9.5" y2="15"/><line x1="12" y1="15" x2="14.5" y2="15"/><line x1="17" y1="11" x2="17" y2="18"/></svg>
+            </span>Gestión<br>Financiera</button>
+            <button type="button" class="dash-hub-node dhn-2" onclick="switchView('salud')"><span class="dash-hub-ic">
+              <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="var(--teal-deep)" stroke-width="1.7"><path d="M12 21s-7-4.35-9.5-8.8C.7 8.4 2.6 5 6 5c2 0 3.5 1.2 6 3.6C14.5 6.2 16 5 18 5c3.4 0 5.3 3.4 3.5 7.2C19 16.65 12 21 12 21z"/><path d="M9 12h1.6l1-2 1.4 4 1-2H16"/></svg>
+            </span>Salud y<br>Cuidado</button>
+            <button type="button" class="dash-hub-node dhn-3" onclick="switchView('inventario')"><span class="dash-hub-ic">
+              <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="var(--navy)" stroke-width="1.7"><path d="M3 8l9-4 9 4-9 4-9-4z"/><path d="M3 8v8l9 4 9-4V8"/><path d="M12 12v8"/></svg>
+            </span>Gestión de<br>Inventario</button>
+            <button type="button" class="dash-hub-node dhn-4" onclick="switchView('comunicaciones')"><span class="dash-hub-ic">
+              <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="var(--teal-deep)" stroke-width="1.7"><path d="M4 5h16v11H8l-4 4V5z"/><line x1="7.5" y1="9" x2="16.5" y2="9"/><line x1="7.5" y1="12.5" x2="13" y2="12.5"/></svg>
+            </span>Comunicaciones</button>
+            <button type="button" class="dash-hub-node dhn-5" onclick="switchView('rrhh')"><span class="dash-hub-ic">
+              <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="var(--navy)" stroke-width="1.7"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17.5" cy="9.5" r="2.4"/><path d="M15.7 14a5 5 0 0 1 5.3 5"/></svg>
+            </span>Recursos<br>Humanos</button>
+            <button type="button" class="dash-hub-node dhn-6" onclick="switchView('residentes')"><span class="dash-hub-ic">
+              <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="var(--teal-deep)" stroke-width="1.7"><rect x="4" y="3" width="16" height="18" rx="1.5"/><circle cx="9.5" cy="9" r="2"/><path d="M6.5 15c0-1.9 1.3-3 3-3s3 1.1 3 3"/><line x1="14.5" y1="7" x2="17" y2="7"/><line x1="14.5" y1="10" x2="17" y2="10"/></svg>
+            </span>Registro de<br>Residentes</button>
+          </div>
+        </div>
+
         <div class="grid-stats">
           <div class="stat-card"><span class="label">Residentes activos</span><span class="value" id="dbResidentes">0</span></div>
           <div class="stat-card warn-top"><span class="label">Cuotas pendientes este mes</span><span class="value warn" id="dbCuotasPend">S/ 0</span></div>
