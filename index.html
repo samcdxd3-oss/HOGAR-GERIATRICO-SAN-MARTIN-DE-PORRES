@@ -210,6 +210,19 @@ tr:last-child td{border-bottom:none;}
 
 .badge-count{background:var(--warn); color:#fff; font-family:var(--mono); font-size:10px; padding:1px 6px; border-radius:10px; margin-left:auto;}
 
+/* ---------- PRIVACIDAD POR INACTIVIDAD ---------- */
+.content{transition:filter .5s ease;}
+.content.blurred{filter:blur(14px); pointer-events:none; user-select:none;}
+#privacyOverlay{
+  display:none; position:fixed; top:0; left:var(--sidebar-w); right:0; bottom:0; z-index:70;
+  align-items:center; justify-content:center; flex-direction:column; gap:12px;
+  background:rgba(243,250,251,0.55); cursor:pointer;
+}
+#privacyOverlay.show{display:flex;}
+.privacy-lock{font-size:38px;}
+.privacy-text{font-family:var(--mono); font-size:12px; color:var(--navy); letter-spacing:.06em; text-transform:uppercase; text-align:center; max-width:280px;}
+@media(max-width:900px){#privacyOverlay{left:0;}}
+
 /* ---------- DASHBOARD HUB (menú circular) ---------- */
 .dash-hub{position:relative; max-width:560px; margin:0 auto; aspect-ratio:1/1; display:grid; place-items:center;}
 .dash-hub-ring{position:absolute; inset:8%; border-radius:50%; background:conic-gradient(var(--teal) 0deg 180deg, var(--navy) 180deg 360deg); opacity:0.14;}
@@ -273,7 +286,7 @@ tr:last-child td{border-bottom:none;}
     </ul>
     <div class="sidebar-foot">
       <button class="btn btn-ghost btn-sm" style="width:100%; border-color:rgba(255,255,255,0.3); color:#EAF3FB;" onclick="openResetModal()">⟲ Restablecer sistema</button>
-      <p style="margin-top:10px;">Prototipo funcional — datos guardados<br>localmente en este navegador.</p>
+      <p style="margin-top:10px;">Prototipo funcional — datos guardados<br>localmente en este navegador.<br><strong style="color:#C7DCF0;">Ctrl+Z</strong> deshace la última acción.</p>
     </div>
   </aside>
 
@@ -287,7 +300,7 @@ tr:last-child td{border-bottom:none;}
       <button class="btn btn-primary btn-sm" onclick="openResidentModal()">+ Nuevo residente</button>
     </div>
 
-    <div class="content">
+    <div class="content" id="contentArea">
 
       <!-- DASHBOARD -->
       <section class="view active" id="view-dashboard">
@@ -636,6 +649,11 @@ tr:last-child td{border-bottom:none;}
   </div>
 </div>
 
+<div id="privacyOverlay">
+  <div class="privacy-lock">🔒</div>
+  <div class="privacy-text">Vista oculta por inactividad — toca para continuar</div>
+</div>
+
 <!-- MODAL: RESIDENTE -->
 <div class="modal-overlay" id="modalResident">
   <div class="modal wide">
@@ -729,6 +747,7 @@ tr:last-child td{border-bottom:none;}
   <div class="modal">
     <h3 id="pagoModalTitle">Registrar pago</h3>
     <input type="hidden" id="pagoCuotaId">
+    <input type="hidden" id="pagoEditMode" value="0">
     <div class="field-row">
       <div class="field"><label>Monto a abonar (S/) *</label><input id="pagoMonto" type="number" min="0" step="0.01"></div>
       <div class="field"><label>Fecha *</label><input id="pagoFecha" type="date"></div>
@@ -817,6 +836,7 @@ tr:last-child td{border-bottom:none;}
   <div class="modal">
     <h3 id="pagoStaffTitle">Pagar sueldo</h3>
     <input type="hidden" id="pagoStaffPayId">
+    <input type="hidden" id="pagoStaffEditMode" value="0">
     <div class="field-row">
       <div class="field"><label>Monto a pagar (S/) *</label><input id="pagoStaffMonto" type="number" min="0" step="0.01"></div>
       <div class="field"><label>Fecha *</label><input id="pagoStaffFecha" type="date"></div>
@@ -980,6 +1000,30 @@ function showToast(msg){
   const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
   clearTimeout(t._timer); t._timer=setTimeout(()=>t.classList.remove('show'), 2600);
 }
+
+/* ---------- DESHACER GLOBAL (Ctrl+Z) ---------- */
+let undoStack = [];
+function pushUndoSnapshot(){
+  try{ undoStack.push(JSON.stringify(DATA)); if(undoStack.length>25) undoStack.shift(); }catch(e){ console.error(e); }
+}
+function performUndo(){
+  if(undoStack.length===0){ showToast('No hay nada que deshacer'); return; }
+  try{
+    DATA = JSON.parse(undoStack.pop());
+    saveData(DATA);
+    renderAll();
+    showToast('Última acción deshecha (Ctrl+Z)');
+  }catch(e){ console.error(e); }
+}
+document.addEventListener('keydown', e=>{
+  const key=e.key.toLowerCase();
+  if((e.ctrlKey||e.metaKey) && key==='z' && !e.shiftKey){
+    const tag=(document.activeElement && document.activeElement.tagName || '').toLowerCase();
+    if(tag==='input' || tag==='textarea') return; // no interferir con deshacer de texto dentro de un campo
+    e.preventDefault();
+    performUndo();
+  }
+});
 function openModal(id){ document.getElementById(id).classList.add('open'); }
 function closeModal(id){ document.getElementById(id).classList.remove('open'); }
 
@@ -1016,8 +1060,9 @@ function cleanOrphansManual(){
 }
 function openResetModal(){ openModal('modalReset'); }
 async function resetAllData(){
-  const ok = await showConfirm('Esto borrará residentes, personal, finanzas, inventario y comunicaciones. No se puede deshacer. ¿Continuar?', 'Borrar todos los datos');
+  const ok = await showConfirm('Esto borrará residentes, personal, finanzas, inventario y comunicaciones. Podrás deshacerlo con Ctrl+Z justo después si te arrepientes. ¿Continuar?', 'Borrar todos los datos');
   if(!ok) return;
+  pushUndoSnapshot();
   DATA = emptyData();
   DATA.gastoCategories = defaultGastoCategories();
   saveData(DATA);
@@ -1126,6 +1171,7 @@ async function openResidentModal(id){
   openModal('modalResident');
 }
 async function saveResident(){
+  pushUndoSnapshot();
   const name=document.getElementById('rName').value.trim();
   if(!name){ showToast('El nombre es obligatorio'); return; }
   const id=document.getElementById('residentId').value;
@@ -1155,6 +1201,7 @@ async function deleteResident(id){
   const r = DATA.residents.find(x=>x.id===id);
   const ok = await showConfirm('¿Eliminar a '+(r?r.name:'este residente')+'? También se eliminarán sus cuotas, contactos familiares y notas de salud asociadas.', 'Eliminar residente');
   if(!ok) return;
+  pushUndoSnapshot();
   DATA.residents = DATA.residents.filter(r=>r.id!==id);
   DATA.cuotas = DATA.cuotas.filter(c=>c.residentId!==id);
   DATA.familyLogs = DATA.familyLogs.filter(f=>f.residentId!==id);
@@ -1258,6 +1305,7 @@ function openSaludModal(id){
   openModal('modalSalud');
 }
 function saveSalud(){
+  pushUndoSnapshot();
   const r=currentSaludResident;
   r.careLevel=document.getElementById('sCareLevel').value;
   r.doctor=document.getElementById('sDoctor').value.trim();
@@ -1316,11 +1364,38 @@ function openPagoModal(cuotaId){
   const r=DATA.residents.find(x=>x.id===c.residentId);
   document.getElementById('pagoModalTitle').textContent='Registrar pago — '+(r?r.name:'');
   document.getElementById('pagoCuotaId').value=cuotaId;
+  document.getElementById('pagoEditMode').value='0';
   const restante = Math.max(0, c.amountDue - c.amountPaid);
   document.getElementById('pagoMonto').value = restante || '';
   document.getElementById('pagoFecha').value = todayISO();
+  document.getElementById('pagoMetodo').value='Efectivo';
   document.getElementById('pagoFile').value='';
   openModal('modalPago');
+}
+function editLastPago(cuotaId){
+  const c=DATA.cuotas.find(x=>x.id===cuotaId);
+  if(!c || c.payments.length===0){ showToast('No hay pagos que editar'); return; }
+  const r=DATA.residents.find(x=>x.id===c.residentId);
+  const last=c.payments[c.payments.length-1];
+  document.getElementById('pagoModalTitle').textContent='Editar último pago — '+(r?r.name:'');
+  document.getElementById('pagoCuotaId').value=cuotaId;
+  document.getElementById('pagoEditMode').value='1';
+  document.getElementById('pagoMonto').value=last.amount;
+  document.getElementById('pagoFecha').value=last.date;
+  document.getElementById('pagoMetodo').value=last.method||'Efectivo';
+  document.getElementById('pagoFile').value='';
+  openModal('modalPago');
+}
+async function undoLastPago(cuotaId){
+  const c=DATA.cuotas.find(x=>x.id===cuotaId);
+  if(!c || c.payments.length===0){ showToast('No hay pagos que deshacer'); return; }
+  const ok = await showConfirm('¿Deshacer el último pago registrado para esta cuota?', 'Deshacer pago');
+  if(!ok) return;
+  pushUndoSnapshot();
+  const last=c.payments.pop();
+  c.amountPaid = Math.max(0, c.amountPaid - last.amount);
+  c.status = cuotaStatusFrom(c.amountDue, c.amountPaid);
+  saveData(DATA); showToast('Último pago deshecho'); renderAll();
 }
 async function savePago(){
   const cuotaId=document.getElementById('pagoCuotaId').value;
@@ -1331,10 +1406,19 @@ async function savePago(){
   let fileData=null, fileName=null;
   const fi=document.getElementById('pagoFile');
   if(fi.files[0]){ fileData=await fileToDataURL(fi.files[0]); fileName=fi.files[0].name; }
-  c.payments.push({date:document.getElementById('pagoFecha').value||todayISO(), amount:monto, method:document.getElementById('pagoMetodo').value, fileData, fileName});
-  c.amountPaid += monto;
+  pushUndoSnapshot();
+  const editMode = document.getElementById('pagoEditMode').value==='1';
+  if(editMode && c.payments.length>0){
+    const last=c.payments[c.payments.length-1];
+    c.amountPaid -= last.amount;
+    c.payments[c.payments.length-1] = {date:document.getElementById('pagoFecha').value||todayISO(), amount:monto, method:document.getElementById('pagoMetodo').value, fileData:fileData||last.fileData, fileName:fileName||last.fileName};
+    c.amountPaid += monto;
+  } else {
+    c.payments.push({date:document.getElementById('pagoFecha').value||todayISO(), amount:monto, method:document.getElementById('pagoMetodo').value, fileData, fileName});
+    c.amountPaid += monto;
+  }
   c.status = cuotaStatusFrom(c.amountDue, c.amountPaid);
-  saveData(DATA); closeModal('modalPago'); showToast('Pago registrado'); renderAll();
+  saveData(DATA); closeModal('modalPago'); showToast(editMode?'Pago actualizado':'Pago registrado'); renderAll();
 }
 function renderCuotas(){
   ensureCuotasForMonth();
@@ -1355,12 +1439,16 @@ function renderCuotas(){
     const r=DATA.residents.find(x=>x.id===c.residentId);
     const statusPill = c.status==='pagado'?'pill-ok':(c.status==='parcial'?'pill-teal':'pill-warn');
     const statusLabel = c.status==='pagado'?'Pagado':(c.status==='parcial'?'Parcial':'Pendiente');
+    const hasPayments = c.payments.length>0;
     return `<tr>
       <td><strong>${esc(r?r.name:'—')}</strong></td>
       <td style="font-family:var(--mono);">${fmt(c.amountDue)}</td>
-      <td style="font-family:var(--mono);" class="${c.amountPaid>0?'':''}">${fmt(c.amountPaid)}</td>
+      <td style="font-family:var(--mono);">${fmt(c.amountPaid)}</td>
       <td><span class="pill ${statusPill}">${statusLabel}</span></td>
-      <td class="row-actions">${c.status!=='pagado'?`<button class="btn btn-primary btn-sm" onclick="openPagoModal('${c.id}')">Registrar pago</button>`:'<span style="font-size:12px; color:var(--ink-soft);">Completo</span>'}</td>
+      <td class="row-actions">
+        ${c.status!=='pagado'?`<button class="btn btn-primary btn-sm" onclick="openPagoModal('${c.id}')">Registrar pago</button>`:''}
+        ${hasPayments?`<button class="btn btn-ghost btn-sm btn-icon" onclick="editLastPago('${c.id}')" title="Editar último pago">✎</button><button class="btn btn-danger btn-sm btn-icon" onclick="undoLastPago('${c.id}')" title="Deshacer último pago">↺</button>`:''}
+      </td>
     </tr>`;
   }).join('');
   document.getElementById('cuotasEmpty').style.display = rows.length?'none':'block';
@@ -1387,6 +1475,7 @@ function toggleNewCatRow(){
   if(!showing) document.getElementById('newCatName').focus();
 }
 function addGastoCategory(){
+  pushUndoSnapshot();
   const name=document.getElementById('newCatName').value.trim();
   if(!name){ showToast('Escribe un nombre para la categoría'); return; }
   if(DATA.gastoCategories.some(c=>c.name.toLowerCase()===name.toLowerCase())){ showToast('Ya existe esa categoría'); return; }
@@ -1435,6 +1524,7 @@ function editGastoInline(id){
 }
 function cancelGastoEdit(){ resetGastoForm(false); }
 async function saveGastoInline(){
+  pushUndoSnapshot();
   const desc=document.getElementById('gastoDesc').value.trim();
   const monto=Number(document.getElementById('gastoMonto').value);
   if(!desc||!monto||monto<=0){ showToast('Completa descripción y un monto válido'); return; }
@@ -1453,6 +1543,7 @@ async function saveGastoInline(){
 async function deleteGasto(id){
   const ok = await showConfirm('¿Eliminar este gasto?', 'Eliminar gasto');
   if(!ok) return;
+  pushUndoSnapshot();
   DATA.gastos = DATA.gastos.filter(g=>g.id!==id);
   if(editingGastoId===id) resetGastoForm(false);
   saveData(DATA); showToast('Gasto eliminado'); renderAll();
@@ -1598,6 +1689,7 @@ function openInventoryModal(id){
   openModal('modalInv');
 }
 function saveInventory(){
+  pushUndoSnapshot();
   const name=document.getElementById('invName').value.trim();
   if(!name){ showToast('El nombre es obligatorio'); return; }
   const id=document.getElementById('invId').value;
@@ -1608,6 +1700,7 @@ function saveInventory(){
 async function deleteInventory(id){
   const ok = await showConfirm('¿Eliminar este ítem del inventario?', 'Eliminar ítem');
   if(!ok) return;
+  pushUndoSnapshot();
   DATA.inventory = DATA.inventory.filter(i=>i.id!==id);
   saveData(DATA); showToast('Ítem eliminado'); renderAll();
 }
@@ -1641,6 +1734,7 @@ function openMovModal(type){
   openModal('modalMov');
 }
 async function saveMov(){
+  pushUndoSnapshot();
   const type=document.getElementById('movType').value;
   const itemId=document.getElementById('movItem').value;
   const qty=Number(document.getElementById('movQty').value);
@@ -1654,6 +1748,7 @@ async function saveMov(){
 async function deleteMov(id){
   const ok = await showConfirm('¿Eliminar este movimiento? No se revertirá el stock automáticamente.', 'Eliminar movimiento');
   if(!ok) return;
+  pushUndoSnapshot();
   DATA.invMovements = DATA.invMovements.filter(m=>m.id!==id);
   saveData(DATA); showToast('Movimiento eliminado'); renderAll();
 }
@@ -1693,6 +1788,7 @@ function openStaffModal(id){
   openModal('modalStaff');
 }
 function saveStaff(){
+  pushUndoSnapshot();
   const name=document.getElementById('staffName').value.trim();
   if(!name){ showToast('El nombre es obligatorio'); return; }
   const id=document.getElementById('staffId').value;
@@ -1704,6 +1800,7 @@ async function deleteStaff(id){
   const s = DATA.staff.find(x=>x.id===id);
   const ok = await showConfirm('¿Eliminar a '+(s?s.name:'este empleado')+'? También se eliminará su historial de pagos.', 'Eliminar empleado');
   if(!ok) return;
+  pushUndoSnapshot();
   DATA.staff = DATA.staff.filter(s=>s.id!==id);
   DATA.staffPayments = DATA.staffPayments.filter(p=>p.staffId!==id);
   saveData(DATA); showToast('Empleado eliminado'); renderAll();
@@ -1738,10 +1835,35 @@ function openPagoStaffModal(payId){
   const s=DATA.staff.find(x=>x.id===p.staffId);
   document.getElementById('pagoStaffTitle').textContent='Pagar sueldo — '+(s?s.name:'');
   document.getElementById('pagoStaffPayId').value=payId;
+  document.getElementById('pagoStaffEditMode').value='0';
   document.getElementById('pagoStaffMonto').value = Math.max(0, p.amountDue - p.amountPaid) || '';
   document.getElementById('pagoStaffFecha').value=todayISO();
   document.getElementById('pagoStaffFile').value='';
   openModal('modalPagoStaff');
+}
+function editLastPagoStaff(payId){
+  const p=DATA.staffPayments.find(x=>x.id===payId);
+  if(!p || p.payments.length===0){ showToast('No hay pagos que editar'); return; }
+  const s=DATA.staff.find(x=>x.id===p.staffId);
+  const last=p.payments[p.payments.length-1];
+  document.getElementById('pagoStaffTitle').textContent='Editar último pago — '+(s?s.name:'');
+  document.getElementById('pagoStaffPayId').value=payId;
+  document.getElementById('pagoStaffEditMode').value='1';
+  document.getElementById('pagoStaffMonto').value=last.amount;
+  document.getElementById('pagoStaffFecha').value=last.date;
+  document.getElementById('pagoStaffFile').value='';
+  openModal('modalPagoStaff');
+}
+async function undoLastPagoStaff(payId){
+  const p=DATA.staffPayments.find(x=>x.id===payId);
+  if(!p || p.payments.length===0){ showToast('No hay pagos que deshacer'); return; }
+  const ok = await showConfirm('¿Deshacer el último pago de sueldo registrado?', 'Deshacer pago');
+  if(!ok) return;
+  pushUndoSnapshot();
+  const last=p.payments.pop();
+  p.amountPaid = Math.max(0, p.amountPaid - last.amount);
+  p.status = cuotaStatusFrom(p.amountDue, p.amountPaid);
+  saveData(DATA); showToast('Último pago deshecho'); renderAll();
 }
 async function savePagoStaff(){
   const payId=document.getElementById('pagoStaffPayId').value;
@@ -1752,10 +1874,19 @@ async function savePagoStaff(){
   let fileData=null, fileName=null;
   const fi=document.getElementById('pagoStaffFile');
   if(fi.files[0]){ fileData=await fileToDataURL(fi.files[0]); fileName=fi.files[0].name; }
-  p.payments.push({date:document.getElementById('pagoStaffFecha').value||todayISO(), amount:monto, fileData, fileName});
-  p.amountPaid += monto;
+  pushUndoSnapshot();
+  const editMode = document.getElementById('pagoStaffEditMode').value==='1';
+  if(editMode && p.payments.length>0){
+    const last=p.payments[p.payments.length-1];
+    p.amountPaid -= last.amount;
+    p.payments[p.payments.length-1] = {date:document.getElementById('pagoStaffFecha').value||todayISO(), amount:monto, fileData:fileData||last.fileData, fileName:fileName||last.fileName};
+    p.amountPaid += monto;
+  } else {
+    p.payments.push({date:document.getElementById('pagoStaffFecha').value||todayISO(), amount:monto, fileData, fileName});
+    p.amountPaid += monto;
+  }
   p.status = cuotaStatusFrom(p.amountDue, p.amountPaid);
-  saveData(DATA); closeModal('modalPagoStaff'); showToast('Pago de sueldo registrado'); renderAll();
+  saveData(DATA); closeModal('modalPagoStaff'); showToast(editMode?'Pago actualizado':'Pago de sueldo registrado'); renderAll();
 }
 function renderStaffPagos(){
   ensureStaffPaymentsForMonth();
@@ -1774,13 +1905,17 @@ function renderStaffPagos(){
     const statusPill = p.status==='pagado'?'pill-ok':(p.status==='parcial'?'pill-teal':'pill-warn');
     const statusLabel = p.status==='pagado'?'Pagado':(p.status==='parcial'?'Parcial':'Pendiente');
     const lastFile = p.payments.length ? p.payments[p.payments.length-1] : null;
+    const hasPayments = p.payments.length>0;
     return `<tr>
       <td><strong>${esc(s?s.name:'—')}</strong></td>
       <td style="font-family:var(--mono);">${fmt(p.amountDue)}</td>
       <td style="font-family:var(--mono);">${fmt(p.amountPaid)}</td>
       <td><span class="pill ${statusPill}">${statusLabel}</span></td>
       <td>${lastFile&&lastFile.fileData?`<a class="filechip" href="${lastFile.fileData}" target="_blank">📎 ${esc(lastFile.fileName||'Ver')}</a>`:'<span class="pill pill-muted">—</span>'}</td>
-      <td class="row-actions">${p.status!=='pagado'?`<button class="btn btn-primary btn-sm" onclick="openPagoStaffModal('${p.id}')">Pagar</button>`:'<span style="font-size:12px; color:var(--ink-soft);">Completo</span>'}</td>
+      <td class="row-actions">
+        ${p.status!=='pagado'?`<button class="btn btn-primary btn-sm" onclick="openPagoStaffModal('${p.id}')">Pagar</button>`:''}
+        ${hasPayments?`<button class="btn btn-ghost btn-sm btn-icon" onclick="editLastPagoStaff('${p.id}')" title="Editar último pago">✎</button><button class="btn btn-danger btn-sm btn-icon" onclick="undoLastPagoStaff('${p.id}')" title="Deshacer último pago">↺</button>`:''}
+      </td>
     </tr>`;
   }).join('');
   document.getElementById('pagosEmpty').style.display = pagosMes.length?'none':'block';
@@ -1794,6 +1929,7 @@ function openAnnouncementModal(){
   openModal('modalAnnouncement');
 }
 function saveAnnouncement(){
+  pushUndoSnapshot();
   const title=document.getElementById('annTitle').value.trim();
   const body=document.getElementById('annBody').value.trim();
   if(!title||!body){ showToast('Completa título y mensaje'); return; }
@@ -1801,6 +1937,7 @@ function saveAnnouncement(){
   saveData(DATA); closeModal('modalAnnouncement'); showToast('Anuncio publicado'); renderAll();
 }
 function deleteAnnouncement(id){
+  pushUndoSnapshot();
   DATA.announcements = DATA.announcements.filter(a=>a.id!==id);
   saveData(DATA); renderAll();
 }
@@ -1825,12 +1962,14 @@ function openFamilyLogModal(){
   openModal('modalFamilyLog');
 }
 function saveFamilyLog(){
+  pushUndoSnapshot();
   const residentId=document.getElementById('flResident').value;
   if(!residentId){ showToast('Selecciona un residente'); return; }
   DATA.familyLogs.push({id:uid(), residentId, familyName:document.getElementById('flFamilyName').value.trim(), date:document.getElementById('flDate').value||todayISO(), method:document.getElementById('flMethod').value, note:document.getElementById('flNote').value.trim()});
   saveData(DATA); closeModal('modalFamilyLog'); showToast('Contacto registrado'); renderAll();
 }
 function deleteFamilyLog(id){
+  pushUndoSnapshot();
   DATA.familyLogs = DATA.familyLogs.filter(f=>f.id!==id);
   saveData(DATA); renderAll();
 }
@@ -1907,6 +2046,28 @@ function renderAll(){
   renderComunicaciones();
 }
 renderAll();
+
+/* ---------- PRIVACIDAD: difuminar tras 10s de inactividad ---------- */
+let inactivityTimer;
+const INACTIVITY_MS = 10000;
+function hidePrivacyOverlay(){
+  document.getElementById('contentArea').classList.remove('blurred');
+  document.getElementById('privacyOverlay').classList.remove('show');
+}
+function showPrivacyOverlay(){
+  document.getElementById('contentArea').classList.add('blurred');
+  document.getElementById('privacyOverlay').classList.add('show');
+}
+function resetInactivityTimer(){
+  hidePrivacyOverlay();
+  clearTimeout(inactivityTimer);
+  inactivityTimer = setTimeout(showPrivacyOverlay, INACTIVITY_MS);
+}
+['mousemove','mousedown','keydown','scroll','touchstart','wheel'].forEach(evt=>{
+  document.addEventListener(evt, resetInactivityTimer, {passive:true});
+});
+document.getElementById('privacyOverlay').addEventListener('click', resetInactivityTimer);
+resetInactivityTimer();
 </script>
 
 </body>
