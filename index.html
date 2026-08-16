@@ -167,6 +167,30 @@ tr:last-child td{border-bottom:none;}
 .grid-3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px;}
 @media(max-width:900px){.two-col-grid,.grid-2,.grid-3{grid-template-columns:1fr;}}
 
+.gastos-top-grid{display:grid; grid-template-columns:1.1fr 0.85fr 1fr; gap:18px; align-items:start;}
+@media(max-width:1150px){.gastos-top-grid{grid-template-columns:1fr 1fr;}}
+@media(max-width:760px){.gastos-top-grid{grid-template-columns:1fr;}}
+
+.cal-grid{display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:3px;}
+.cal-dow{font-family:var(--mono); font-size:9px; color:var(--ink-soft); text-align:center; padding:3px 0; text-transform:uppercase;}
+.cal-day{aspect-ratio:1/0.85; background:var(--bg-deep); border:1px solid var(--line); border-radius:5px; padding:3px; cursor:pointer; display:flex; flex-direction:column; justify-content:space-between; min-width:0; overflow:hidden;}
+.cal-day.empty{background:transparent; border:none; cursor:default;}
+.cal-day.today{border-color:var(--teal); box-shadow:0 0 0 1px var(--teal) inset;}
+.cal-day.selected{background:var(--teal); border-color:var(--teal);}
+.cal-day.selected .dnum{color:#fff;}
+.cal-day .dnum{font-family:var(--mono); font-size:10px; color:var(--ink-soft);}
+.cal-day.today .dnum{color:var(--teal-deep); font-weight:700;}
+.cal-day .ddot{width:5px; height:5px; border-radius:50%; background:var(--warn); align-self:flex-end;}
+
+.recent-row{display:flex; align-items:center; gap:8px; padding:8px 4px; border-bottom:1px dashed var(--line); font-size:12.5px;}
+.recent-row:last-child{border-bottom:none;}
+.recent-dot{width:8px; height:8px; border-radius:50%; flex-shrink:0;}
+.recent-row .rr-main{flex:1; min-width:0;}
+.recent-row .rr-desc{font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.recent-row .rr-meta{color:var(--ink-soft); font-size:11px;}
+.recent-row .rr-amt{font-family:var(--mono); font-weight:600; color:var(--warn); white-space:nowrap;}
+
+
 .chart-card h3{font-size:15px; margin-bottom:2px;}
 .chart-card .desc{font-size:11.5px; color:var(--ink-soft); margin-bottom:12px;}
 .chart-wrap{position:relative; height:220px;}
@@ -247,7 +271,10 @@ tr:last-child td{border-bottom:none;}
       <li><button data-view="rrhh"><span class="nav-ic">◒</span>Recursos humanos</button></li>
       <li><button data-view="comunicaciones"><span class="nav-ic">◓</span>Comunicaciones</button></li>
     </ul>
-    <div class="sidebar-foot">Prototipo funcional — datos guardados<br>localmente en este navegador.</div>
+    <div class="sidebar-foot">
+      <button class="btn btn-ghost btn-sm" style="width:100%; border-color:rgba(255,255,255,0.3); color:#EAF3FB;" onclick="openResetModal()">⟲ Restablecer sistema</button>
+      <p style="margin-top:10px;">Prototipo funcional — datos guardados<br>localmente en este navegador.</p>
+    </div>
   </aside>
 
   <div class="main">
@@ -399,10 +426,52 @@ tr:last-child td{border-bottom:none;}
 
         <!-- SUBVISTA: GASTOS -->
         <div class="subview" id="fin-gastos">
-          <div class="section-head">
-            <p class="eyebrow">Registro de gastos operativos</p>
-            <button class="btn btn-primary btn-sm" onclick="openGastoModal()">+ Registrar gasto</button>
+          <div class="gastos-top-grid" style="margin-bottom:20px;">
+            <div class="card" id="gastoQuickCard">
+              <h3 id="gastoFormTitle" style="font-size:15px; margin-bottom:14px;">Registrar gasto</h3>
+              <input type="hidden" id="gastoId">
+              <div class="field">
+                <label>Categoría *</label>
+                <div style="display:flex; gap:8px;">
+                  <select id="gastoCategory" style="flex:1;"></select>
+                  <button type="button" class="btn btn-ghost btn-sm" onclick="toggleNewCatRow()">+ Categoría</button>
+                </div>
+                <div id="newCatRow" style="display:none; margin-top:8px; gap:8px;">
+                  <input type="text" id="newCatName" placeholder="Nombre de la nueva categoría">
+                  <button type="button" class="btn btn-primary btn-sm" style="margin-top:8px;" onclick="addGastoCategory()">Agregar categoría</button>
+                </div>
+              </div>
+              <div class="field"><label>Descripción *</label><input id="gastoDesc" type="text" placeholder="Ej. Compra semanal de verduras"></div>
+              <div class="field-row">
+                <div class="field"><label>Monto (S/) *</label><input id="gastoMonto" type="number" min="0" step="0.01"></div>
+                <div class="field"><label>Fecha *</label><input id="gastoFecha" type="date"></div>
+              </div>
+              <div class="field file-field"><label>Comprobante (opcional)</label><input id="gastoFile" type="file" accept="image/*,application/pdf"></div>
+              <div style="display:flex; gap:10px; margin-top:4px;">
+                <button class="btn btn-primary btn-sm" id="gastoSubmitBtn" onclick="saveGastoInline()">+ Agregar gasto</button>
+                <button class="btn btn-ghost btn-sm" id="gastoCancelEditBtn" style="display:none;" onclick="cancelGastoEdit()">Cancelar edición</button>
+              </div>
+            </div>
+
+            <div class="card">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <h3 style="font-size:15px;">Calendario</h3>
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <button class="btn btn-ghost btn-sm btn-icon" onclick="calGastoPrev()">‹</button>
+                  <span id="calGastoLabel" style="font-family:var(--mono); font-size:11.5px; min-width:96px; text-align:center;">—</span>
+                  <button class="btn btn-ghost btn-sm btn-icon" onclick="calGastoNext()">›</button>
+                </div>
+              </div>
+              <div id="calGastoGrid" class="cal-grid"></div>
+              <div id="calGastoFilterNote" style="margin-top:10px; font-size:12px; color:var(--teal-deep); display:none;">Filtrando por día seleccionado. <button class="btn btn-ghost btn-sm" onclick="clearCalGastoFilter()" style="padding:2px 8px; font-size:11px;">Ver todos</button></div>
+            </div>
+
+            <div class="card">
+              <h3 style="font-size:15px; margin-bottom:12px;">Movimientos recientes</h3>
+              <div id="gastoRecentList" style="display:flex; flex-direction:column; gap:2px; max-height:400px; overflow-y:auto;"></div>
+            </div>
           </div>
+
           <div class="grid-stats">
             <div class="stat-card navy-top"><span class="label">Gastado este mes</span><span class="value" id="gastosTotalMes">S/ 0</span></div>
             <div class="stat-card"><span class="label">Movimientos este mes</span><span class="value" id="gastosCountMes">0</span></div>
@@ -424,7 +493,7 @@ tr:last-child td{border-bottom:none;}
             <div class="chart-wrap"><canvas id="chartGastosTrend"></canvas></div>
           </div>
           <div class="search-bar">
-            <input type="text" id="gastoSearch" placeholder="Buscar por descripción o proveedor…" oninput="renderGastos()">
+            <input type="text" id="gastoSearch" placeholder="Buscar por descripción…" oninput="renderGastos()">
             <select id="gastoFilterCat" onchange="renderGastos()"><option value="">Todas las categorías</option></select>
           </div>
           <div class="card table-wrap">
@@ -673,24 +742,7 @@ tr:last-child td{border-bottom:none;}
   </div>
 </div>
 
-<!-- MODAL: GASTO -->
-<div class="modal-overlay" id="modalGasto">
-  <div class="modal">
-    <h3>Registrar gasto</h3>
-    <input type="hidden" id="gastoId">
-    <div class="field"><label>Categoría *</label><select id="gastoCategory"></select></div>
-    <div class="field"><label>Descripción *</label><input id="gastoDesc" type="text"></div>
-    <div class="field-row">
-      <div class="field"><label>Monto (S/) *</label><input id="gastoMonto" type="number" min="0" step="0.01"></div>
-      <div class="field"><label>Fecha *</label><input id="gastoFecha" type="date"></div>
-    </div>
-    <div class="field file-field"><label>Comprobante — factura o boleta (opcional)</label><input id="gastoFile" type="file" accept="image/*,application/pdf"></div>
-    <div class="modal-actions">
-      <button class="btn btn-ghost btn-sm" onclick="closeModal('modalGasto')">Cancelar</button>
-      <button class="btn btn-primary btn-sm" onclick="saveGasto()">Guardar gasto</button>
-    </div>
-  </div>
-</div>
+
 
 <!-- MODAL: INVENTARIO ITEM -->
 <div class="modal-overlay" id="modalInv">
@@ -808,6 +860,33 @@ tr:last-child td{border-bottom:none;}
   </div>
 </div>
 
+<!-- MODAL: CONFIRMACIÓN GENÉRICA -->
+<div class="modal-overlay" id="modalConfirm">
+  <div class="modal">
+    <h3 id="confirmTitle">Confirmar</h3>
+    <p id="confirmMessage" style="font-size:14px; color:var(--ink-soft); margin-bottom:6px; white-space:pre-line;"></p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost btn-sm" id="confirmCancelBtn">Cancelar</button>
+      <button class="btn btn-sm" id="confirmOkBtn" style="background:var(--warn); color:#fff; border-color:var(--warn);">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: RESTABLECER SISTEMA -->
+<div class="modal-overlay" id="modalReset">
+  <div class="modal">
+    <h3>Restablecer sistema</h3>
+    <p style="font-size:14px; color:var(--ink-soft); margin-bottom:16px;">Elige qué quieres limpiar. Esta acción no se puede deshacer.</p>
+    <div style="display:flex; flex-direction:column; gap:10px;">
+      <button class="btn btn-ghost btn-sm" style="justify-content:flex-start;" onclick="cleanOrphansManual()">Solo corregir registros huérfanos (cuotas/pagos de residentes o personal ya eliminados)</button>
+      <button class="btn btn-danger btn-sm" style="justify-content:flex-start;" onclick="resetAllData()">Borrar TODOS los datos y empezar desde cero</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('modalReset')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -817,7 +896,7 @@ tr:last-child td{border-bottom:none;}
 ===================================================== */
 const STORAGE_KEY = 'ceapamSMP_v1';
 const CURRENCY = 'S/ ';
-const GASTO_CATEGORIES = [
+function defaultGastoCategories(){ return [
   {name:'Personal', color:'#0E4796'},
   {name:'Alimentación', color:'#0096AC'},
   {name:'Suministros médicos', color:'#10759E'},
@@ -825,7 +904,8 @@ const GASTO_CATEGORIES = [
   {name:'Mantenimiento', color:'#4C7BB5'},
   {name:'Seguros', color:'#7FB8C4'},
   {name:'Otros', color:'#54697A'}
-];
+]; }
+const CAT_COLOR_POOL = ['#0E4796','#0096AC','#10759E','#4C7BB5','#7FB8C4','#54697A','#2E6B7E','#1B4F72','#5DA9B8','#8AA9C9','#3A6B8F','#6C8EA3'];
 const MONTH_NAMES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 const MONTH_SHORT=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 
@@ -877,15 +957,24 @@ function seedData(){
     {id:uid(), title:'Bienvenida al nuevo sistema', body:'A partir de hoy todo el registro de residentes, pagos y salud se maneja desde aquí.', date:todayISO()}
   ], familyLogs:[]};
 }
-function emptyData(){ return {residents:[], staff:[], inventory:[], gastos:[], cuotas:[], invMovements:[], staffPayments:[], announcements:[], familyLogs:[]}; }
+function emptyData(){ return {residents:[], staff:[], inventory:[], gastos:[], gastoCategories:defaultGastoCategories(), cuotas:[], invMovements:[], staffPayments:[], announcements:[], familyLogs:[]}; }
 
 function loadData(){
-  try{ const raw=localStorage.getItem(STORAGE_KEY); if(raw) return JSON.parse(raw); }
-  catch(e){ console.error(e); }
-  const seeded=seedData(); saveData(seeded); return seeded;
+  try{
+    const raw=localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      const parsed=JSON.parse(raw);
+      if(!parsed.gastoCategories) parsed.gastoCategories = defaultGastoCategories();
+      if(!parsed.familyLogs) parsed.familyLogs = [];
+      return parsed;
+    }
+  }catch(e){ console.error(e); }
+  // Instalación nueva: arranca completamente vacía, sin datos de prueba.
+  const fresh=emptyData(); saveData(fresh); return fresh;
 }
 function saveData(d){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); }catch(e){ console.error(e); } }
 let DATA = loadData();
+cleanOrphans();
 
 function showToast(msg){
   const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
@@ -893,6 +982,49 @@ function showToast(msg){
 }
 function openModal(id){ document.getElementById(id).classList.add('open'); }
 function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+
+/* ---------- CONFIRMACIÓN (reemplaza confirm() nativo) ---------- */
+function showConfirm(message, title){
+  return new Promise(resolve=>{
+    document.getElementById('confirmTitle').textContent = title || 'Confirmar';
+    document.getElementById('confirmMessage').textContent = message;
+    openModal('modalConfirm');
+    const okBtn=document.getElementById('confirmOkBtn'), cancelBtn=document.getElementById('confirmCancelBtn');
+    function cleanup(result){ closeModal('modalConfirm'); okBtn.removeEventListener('click',onOk); cancelBtn.removeEventListener('click',onCancel); resolve(result); }
+    function onOk(){ cleanup(true); } function onCancel(){ cleanup(false); }
+    okBtn.addEventListener('click', onOk); cancelBtn.addEventListener('click', onCancel);
+  });
+}
+
+/* ---------- LIMPIEZA DE REGISTROS HUÉRFANOS ---------- */
+function cleanOrphans(){
+  const residentIds = new Set(DATA.residents.map(r=>r.id));
+  const staffIds = new Set(DATA.staff.map(s=>s.id));
+  let changed = false;
+  const c1 = DATA.cuotas.length; DATA.cuotas = DATA.cuotas.filter(c=>residentIds.has(c.residentId)); if(DATA.cuotas.length!==c1) changed=true;
+  const c2 = DATA.staffPayments.length; DATA.staffPayments = DATA.staffPayments.filter(p=>staffIds.has(p.staffId)); if(DATA.staffPayments.length!==c2) changed=true;
+  const c3 = DATA.familyLogs.length; DATA.familyLogs = DATA.familyLogs.filter(f=>residentIds.has(f.residentId)); if(DATA.familyLogs.length!==c3) changed=true;
+  DATA.invMovements.forEach(m=>{ if(m.residentId && !residentIds.has(m.residentId)){ m.residentId=''; changed=true; } });
+  if(changed) saveData(DATA);
+  return changed;
+}
+function cleanOrphansManual(){
+  const changed = cleanOrphans();
+  closeModal('modalReset');
+  showToast(changed ? 'Registros huérfanos corregidos' : 'No se encontraron registros huérfanos');
+  renderAll();
+}
+function openResetModal(){ openModal('modalReset'); }
+async function resetAllData(){
+  const ok = await showConfirm('Esto borrará residentes, personal, finanzas, inventario y comunicaciones. No se puede deshacer. ¿Continuar?', 'Borrar todos los datos');
+  if(!ok) return;
+  DATA = emptyData();
+  DATA.gastoCategories = defaultGastoCategories();
+  saveData(DATA);
+  closeModal('modalReset');
+  showToast('Sistema restablecido — empezando desde cero');
+  renderAll();
+}
 
 /* ---------- NAVEGACIÓN ---------- */
 const VIEW_TITLES={dashboard:'Dashboard', residentes:'Registro de residentes', salud:'Salud y cuidado', finanzas:'Gestión financiera', inventario:'Inventario', rrhh:'Recursos humanos', comunicaciones:'Comunicaciones'};
@@ -1019,9 +1151,14 @@ async function saveResident(){
   else{ DATA.residents.push(obj); }
   saveData(DATA); closeModal('modalResident'); showToast('Residente guardado'); renderAll();
 }
-function deleteResident(id){
-  if(!confirm('¿Eliminar este residente? Esta acción no se puede deshacer.')) return;
+async function deleteResident(id){
+  const r = DATA.residents.find(x=>x.id===id);
+  const ok = await showConfirm('¿Eliminar a '+(r?r.name:'este residente')+'? También se eliminarán sus cuotas, contactos familiares y notas de salud asociadas.', 'Eliminar residente');
+  if(!ok) return;
   DATA.residents = DATA.residents.filter(r=>r.id!==id);
+  DATA.cuotas = DATA.cuotas.filter(c=>c.residentId!==id);
+  DATA.familyLogs = DATA.familyLogs.filter(f=>f.residentId!==id);
+  DATA.invMovements.forEach(m=>{ if(m.residentId===id) m.residentId=''; });
   saveData(DATA); showToast('Residente eliminado'); renderAll();
 }
 function renderResidents(){
@@ -1235,42 +1372,141 @@ function renderCuotas(){
 
 /* ============ FINANZAS: GASTOS ============ */
 function refreshGastoCategorySelects(){
-  const opts = GASTO_CATEGORIES.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
-  document.getElementById('gastoCategory').innerHTML = opts;
+  const opts = DATA.gastoCategories.map(c=>`<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('');
+  const sel=document.getElementById('gastoCategory');
+  const cur=sel.value;
+  sel.innerHTML = opts;
+  if(DATA.gastoCategories.some(c=>c.name===cur)) sel.value=cur;
   document.getElementById('gastoFilterCat').innerHTML = '<option value="">Todas las categorías</option>'+opts;
 }
-function categoryColor(name){ const c=GASTO_CATEGORIES.find(x=>x.name===name); return c?c.color:'#54697A'; }
-function openGastoModal(id){
-  document.getElementById('gastoId').value=id||'';
-  const g = id ? DATA.gastos.find(x=>x.id===id) : null;
-  document.getElementById('gastoCategory').value = g?g.category:GASTO_CATEGORIES[0].name;
-  document.getElementById('gastoDesc').value = g?g.description:'';
-  document.getElementById('gastoMonto').value = g?g.amount:'';
-  document.getElementById('gastoFecha').value = g?g.date:todayISO();
-  document.getElementById('gastoFile').value='';
-  openModal('modalGasto');
+function categoryColor(name){ const c=DATA.gastoCategories.find(x=>x.name===name); return c?c.color:'#54697A'; }
+function toggleNewCatRow(){
+  const row=document.getElementById('newCatRow');
+  const showing = row.style.display==='flex';
+  row.style.display = showing ? 'none' : 'flex';
+  if(!showing) document.getElementById('newCatName').focus();
 }
-async function saveGasto(){
+function addGastoCategory(){
+  const name=document.getElementById('newCatName').value.trim();
+  if(!name){ showToast('Escribe un nombre para la categoría'); return; }
+  if(DATA.gastoCategories.some(c=>c.name.toLowerCase()===name.toLowerCase())){ showToast('Ya existe esa categoría'); return; }
+  const color = CAT_COLOR_POOL[DATA.gastoCategories.length % CAT_COLOR_POOL.length];
+  DATA.gastoCategories.push({name, color});
+  saveData(DATA);
+  document.getElementById('newCatName').value='';
+  document.getElementById('newCatRow').style.display='none';
+  refreshGastoCategorySelects();
+  document.getElementById('gastoCategory').value=name;
+  showToast('Categoría "'+name+'" agregada');
+}
+
+/* ---- Formulario en línea (agregar / editar sin modal) ---- */
+let editingGastoId=null;
+function resetGastoForm(keepCategoryAndDate){
+  const cat = document.getElementById('gastoCategory').value;
+  const fecha = document.getElementById('gastoFecha').value;
+  editingGastoId=null;
+  document.getElementById('gastoId').value='';
+  document.getElementById('gastoDesc').value='';
+  document.getElementById('gastoMonto').value='';
+  document.getElementById('gastoFile').value='';
+  document.getElementById('gastoFormTitle').textContent='Registrar gasto';
+  document.getElementById('gastoSubmitBtn').textContent='+ Agregar gasto';
+  document.getElementById('gastoCancelEditBtn').style.display='none';
+  if(keepCategoryAndDate){ document.getElementById('gastoCategory').value=cat; document.getElementById('gastoFecha').value=fecha; }
+  else { document.getElementById('gastoFecha').value=todayISO(); }
+  document.getElementById('gastoDesc').focus();
+}
+function editGastoInline(id){
+  const g=DATA.gastos.find(x=>x.id===id);
+  if(!g) return;
+  editingGastoId=id;
+  document.getElementById('gastoId').value=id;
+  document.getElementById('gastoCategory').value=g.category;
+  document.getElementById('gastoDesc').value=g.description;
+  document.getElementById('gastoMonto').value=g.amount;
+  document.getElementById('gastoFecha').value=g.date;
+  document.getElementById('gastoFile').value='';
+  document.getElementById('gastoFormTitle').textContent='Editando gasto';
+  document.getElementById('gastoSubmitBtn').textContent='Guardar cambios';
+  document.getElementById('gastoCancelEditBtn').style.display='inline-flex';
+  document.getElementById('gastoQuickCard').scrollIntoView({behavior:'smooth', block:'start'});
+  document.getElementById('gastoDesc').focus();
+}
+function cancelGastoEdit(){ resetGastoForm(false); }
+async function saveGastoInline(){
   const desc=document.getElementById('gastoDesc').value.trim();
   const monto=Number(document.getElementById('gastoMonto').value);
-  if(!desc||!monto||monto<=0){ showToast('Completa descripción y monto'); return; }
-  const id=document.getElementById('gastoId').value;
+  if(!desc||!monto||monto<=0){ showToast('Completa descripción y un monto válido'); return; }
+  const id=editingGastoId;
   const existing = id ? DATA.gastos.find(x=>x.id===id) : null;
   let fileData = existing?existing.fileData:null, fileName = existing?existing.fileName:null;
   const fi=document.getElementById('gastoFile');
   if(fi.files[0]){ fileData=await fileToDataURL(fi.files[0]); fileName=fi.files[0].name; }
-  const obj={id:id||uid(), category:document.getElementById('gastoCategory').value, description:desc, amount:monto, date:document.getElementById('gastoFecha').value||todayISO(), fileData, fileName};
-  if(id){ DATA.gastos = DATA.gastos.map(g=>g.id===id?obj:g); } else { DATA.gastos.push(obj); }
-  saveData(DATA); closeModal('modalGasto'); showToast('Gasto guardado'); renderAll();
+  const obj={id:id||uid(), category:document.getElementById('gastoCategory').value, description:desc, amount:monto, date:document.getElementById('gastoFecha').value||todayISO(), fileData, fileName, createdAt: existing?existing.createdAt:Date.now()};
+  if(id){ DATA.gastos = DATA.gastos.map(g=>g.id===id?obj:g); showToast('Gasto actualizado'); }
+  else { DATA.gastos.push(obj); showToast('Gasto agregado'); }
+  saveData(DATA);
+  resetGastoForm(true); // mantiene categoría y fecha para seguir cargando la compra de la semana
+  renderAll();
 }
-function deleteGasto(id){
-  if(!confirm('¿Eliminar este gasto?')) return;
+async function deleteGasto(id){
+  const ok = await showConfirm('¿Eliminar este gasto?', 'Eliminar gasto');
+  if(!ok) return;
   DATA.gastos = DATA.gastos.filter(g=>g.id!==id);
+  if(editingGastoId===id) resetGastoForm(false);
   saveData(DATA); showToast('Gasto eliminado'); renderAll();
 }
 function gastosInMonth(mk){ return DATA.gastos.filter(g=>g.date.slice(0,7)===mk); }
+
+/* ---- Calendario de gastos ---- */
+let calGastoYear, calGastoMonth, calGastoSelectedDate=null;
+function calGastoPrev(){ calGastoMonth--; if(calGastoMonth<0){calGastoMonth=11; calGastoYear--;} calGastoSelectedDate=null; renderCalGasto(); renderGastos(); }
+function calGastoNext(){ calGastoMonth++; if(calGastoMonth>11){calGastoMonth=0; calGastoYear++;} calGastoSelectedDate=null; renderCalGasto(); renderGastos(); }
+function clearCalGastoFilter(){ calGastoSelectedDate=null; renderCalGasto(); renderGastos(); }
+function renderCalGasto(){
+  if(calGastoYear==null){ const n=new Date(); calGastoYear=n.getFullYear(); calGastoMonth=n.getMonth(); }
+  document.getElementById('calGastoLabel').textContent = MONTH_SHORT[calGastoMonth]+' '+calGastoYear;
+  const daysInMonth=new Date(calGastoYear,calGastoMonth+1,0).getDate();
+  const firstDow=new Date(calGastoYear,calGastoMonth,1).getDay();
+  const DOW=['D','L','M','M','J','V','S'];
+  let html=DOW.map(d=>`<div class="cal-dow">${d}</div>`).join('');
+  for(let i=0;i<firstDow;i++) html+='<div class="cal-day empty"></div>';
+  const now=new Date();
+  const hasGasto={};
+  DATA.gastos.forEach(g=>{ if(g.date.slice(0,7)===monthKey(calGastoYear,calGastoMonth)) hasGasto[g.date]=true; });
+  for(let d=1; d<=daysInMonth; d++){
+    const dateStr=calGastoYear+'-'+pad(calGastoMonth+1)+'-'+pad(d);
+    const isToday = now.getFullYear()===calGastoYear && now.getMonth()===calGastoMonth && now.getDate()===d;
+    const isSel = calGastoSelectedDate===dateStr;
+    html+=`<div class="cal-day ${isToday?'today':''} ${isSel?'selected':''}" data-date="${dateStr}"><span class="dnum">${d}</span>${hasGasto[dateStr]?'<span class="ddot"></span>':''}</div>`;
+  }
+  const grid=document.getElementById('calGastoGrid');
+  grid.innerHTML=html;
+  grid.querySelectorAll('.cal-day[data-date]').forEach(el=>{
+    el.addEventListener('click', ()=>{ calGastoSelectedDate = calGastoSelectedDate===el.dataset.date ? null : el.dataset.date; renderCalGasto(); renderGastos(); });
+  });
+  document.getElementById('calGastoFilterNote').style.display = calGastoSelectedDate ? 'block' : 'none';
+}
+
+/* ---- Lista de movimientos recientes (al costado, en vivo) ---- */
+function renderGastoRecentList(){
+  const list=document.getElementById('gastoRecentList');
+  const rows=[...DATA.gastos].sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).slice(0,10);
+  list.innerHTML = rows.length ? rows.map(g=>`
+    <div class="recent-row">
+      <span class="recent-dot" style="background:${categoryColor(g.category)}"></span>
+      <div class="rr-main"><div class="rr-desc">${esc(g.description)}</div><div class="rr-meta">${esc(g.category)} · ${fmtDate(g.date)}</div></div>
+      <span class="rr-amt">-${fmt(g.amount)}</span>
+      <button class="btn btn-ghost btn-sm btn-icon" onclick="editGastoInline('${g.id}')" title="Editar" style="padding:4px 6px;">✎</button>
+    </div>`).join('') : '<p style="font-size:12.5px; color:var(--ink-soft);">Aún no hay gastos registrados.</p>';
+}
+
 function renderGastos(){
   refreshGastoCategorySelects();
+  if(!document.getElementById('gastoFecha').value) document.getElementById('gastoFecha').value=todayISO();
+  renderCalGasto();
+  renderGastoRecentList();
   const mk=curMonthKey();
   const gMes = gastosInMonth(mk);
   document.getElementById('gastosTotalMes').textContent = fmt(gMes.reduce((s,g)=>s+g.amount,0));
@@ -1296,9 +1532,10 @@ function renderGastos(){
 
   const search=(document.getElementById('gastoSearch')?.value||'').toLowerCase();
   const filterCat=document.getElementById('gastoFilterCat').value;
-  const rows=[...DATA.gastos].sort((a,b)=>b.date.localeCompare(a.date)).filter(g=>
+  let rows=[...DATA.gastos].sort((a,b)=>b.date.localeCompare(a.date)).filter(g=>
     (!filterCat||g.category===filterCat) && (!search||g.description.toLowerCase().includes(search)||g.category.toLowerCase().includes(search))
   );
+  if(calGastoSelectedDate) rows = rows.filter(g=>g.date===calGastoSelectedDate);
   const body=document.getElementById('gastosTableBody');
   body.innerHTML = rows.map(g=>`
     <tr>
@@ -1308,7 +1545,7 @@ function renderGastos(){
       <td>${g.fileData?`<a class="filechip" href="${g.fileData}" target="_blank">📎 ${esc(g.fileName||'Ver')}</a>`:'<span class="pill pill-muted">—</span>'}</td>
       <td style="font-family:var(--mono); color:var(--warn); font-weight:600;">-${fmt(g.amount)}</td>
       <td class="row-actions">
-        <button class="btn btn-ghost btn-sm btn-icon" onclick="openGastoModal('${g.id}')" title="Editar">✎</button>
+        <button class="btn btn-ghost btn-sm btn-icon" onclick="editGastoInline('${g.id}')" title="Editar">✎</button>
         <button class="btn btn-danger btn-sm btn-icon" onclick="deleteGasto('${g.id}')" title="Eliminar">✕</button>
       </td>
     </tr>`).join('');
@@ -1368,8 +1605,9 @@ function saveInventory(){
   if(id){ DATA.inventory = DATA.inventory.map(i=>i.id===id?obj:i); } else { DATA.inventory.push(obj); }
   saveData(DATA); closeModal('modalInv'); showToast('Ítem guardado'); renderAll();
 }
-function deleteInventory(id){
-  if(!confirm('¿Eliminar este ítem?')) return;
+async function deleteInventory(id){
+  const ok = await showConfirm('¿Eliminar este ítem del inventario?', 'Eliminar ítem');
+  if(!ok) return;
   DATA.inventory = DATA.inventory.filter(i=>i.id!==id);
   saveData(DATA); showToast('Ítem eliminado'); renderAll();
 }
@@ -1402,19 +1640,20 @@ function openMovModal(type){
   document.getElementById('movNote').value='';
   openModal('modalMov');
 }
-function saveMov(){
+async function saveMov(){
   const type=document.getElementById('movType').value;
   const itemId=document.getElementById('movItem').value;
   const qty=Number(document.getElementById('movQty').value);
   const item=DATA.inventory.find(i=>i.id===itemId);
   if(!item || !qty || qty<=0){ showToast('Selecciona un ítem y una cantidad válida'); return; }
-  if(type==='salida' && qty>item.qty){ if(!confirm('La cantidad supera el stock actual ('+item.qty+'). ¿Registrar de todas formas?')) return; }
+  if(type==='salida' && qty>item.qty){ const ok=await showConfirm('La cantidad supera el stock actual ('+item.qty+'). ¿Registrar de todas formas?', 'Stock insuficiente'); if(!ok) return; }
   item.qty += (type==='entrada' ? qty : -qty);
   DATA.invMovements.push({id:uid(), itemId, type, qty, date:document.getElementById('movFecha').value||todayISO(), note:document.getElementById('movNote').value.trim(), residentId:type==='salida'?document.getElementById('movResident').value:''});
   saveData(DATA); closeModal('modalMov'); showToast('Movimiento registrado'); renderAll();
 }
-function deleteMov(id){
-  if(!confirm('¿Eliminar este movimiento? No se revertirá el stock automáticamente.')) return;
+async function deleteMov(id){
+  const ok = await showConfirm('¿Eliminar este movimiento? No se revertirá el stock automáticamente.', 'Eliminar movimiento');
+  if(!ok) return;
   DATA.invMovements = DATA.invMovements.filter(m=>m.id!==id);
   saveData(DATA); showToast('Movimiento eliminado'); renderAll();
 }
@@ -1461,9 +1700,12 @@ function saveStaff(){
   if(id){ DATA.staff = DATA.staff.map(s=>s.id===id?obj:s); } else { DATA.staff.push(obj); }
   saveData(DATA); closeModal('modalStaff'); showToast('Empleado guardado'); renderAll();
 }
-function deleteStaff(id){
-  if(!confirm('¿Eliminar este empleado?')) return;
+async function deleteStaff(id){
+  const s = DATA.staff.find(x=>x.id===id);
+  const ok = await showConfirm('¿Eliminar a '+(s?s.name:'este empleado')+'? También se eliminará su historial de pagos.', 'Eliminar empleado');
+  if(!ok) return;
   DATA.staff = DATA.staff.filter(s=>s.id!==id);
+  DATA.staffPayments = DATA.staffPayments.filter(p=>p.staffId!==id);
   saveData(DATA); showToast('Empleado eliminado'); renderAll();
 }
 function renderStaffTable(){
