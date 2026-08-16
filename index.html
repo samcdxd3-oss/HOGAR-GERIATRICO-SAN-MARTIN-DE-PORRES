@@ -28,6 +28,14 @@
   --serif:"Fraunces", serif;
   --sans:"Work Sans", sans-serif;
   --mono:"IBM Plex Mono", monospace;
+
+  /* Paleta de marca — CEAPAM San Martín de Porres */
+  --brand-teal:#12879C;
+  --brand-teal-deep:#0B6577;
+  --brand-navy:#1C3F73;
+  --brand-navy-deep:#132B50;
+  --brand-coral:#E2572B;
+  --brand-cream:#FBE9B0;
 }
 *{box-sizing:border-box; margin:0; padding:0;}
 html{scroll-behavior:smooth;}
@@ -84,46 +92,52 @@ h1,h2,h3{font-family:var(--serif); font-weight:600; letter-spacing:-0.01em; colo
 .nav-cta{padding:10px 20px; font-size:14px;}
 @media(max-width:800px){.nav-links{display:none;} .nav-inner{padding:14px 20px;}}
 
-/* ---------- HERO ---------- */
-.hero{position:relative; padding:96px 0 110px; overflow:hidden;}
-.hero-rings{position:absolute; inset:-20% -10% auto auto; width:900px; height:900px; pointer-events:none;
-  background:
-    repeating-radial-gradient(circle at 70% 20%, transparent 0 34px, rgba(78,107,91,0.07) 35px 36px);
+/* ---------- PORTADA (hero) ---------- */
+.portada{position:relative; padding:88px 0 96px; overflow:hidden; text-align:center;}
+.portada-rings{position:absolute; inset:-30% -10% auto -10%; height:1100px; pointer-events:none;
+  background: repeating-radial-gradient(circle at 50% 0%, transparent 0 34px, rgba(18,135,156,0.06) 35px 36px);
   opacity:0.9;}
-.hero-grid{display:grid; grid-template-columns:1.05fr 0.95fr; gap:56px; align-items:center; position:relative;}
-@media(max-width:940px){.hero-grid{grid-template-columns:1fr;}}
-
-.hero-copy h1{font-size:clamp(46px, 6.4vw, 78px); line-height:0.98; margin-bottom:26px;}
-.hero-copy h1 em{font-style:italic; color:var(--clay-deep); font-weight:500;}
-.hero-sub{font-size:18px; color:var(--ink-soft); max-width:480px; margin-bottom:36px;}
+.portada-inner{position:relative;}
+.portada-title{font-size:clamp(44px, 6vw, 74px); line-height:0.98; margin-bottom:20px; color:var(--brand-navy);}
+.portada-title em{font-style:italic; color:var(--brand-coral); font-weight:500;}
+.hero-sub{font-size:18px; color:var(--ink-soft); max-width:520px;}
 .hero-actions{display:flex; gap:16px; flex-wrap:wrap;}
 
-.hero-panel{position:relative;}
-.panel-card{
-  background:var(--card); border:1px solid var(--line-strong); border-radius:4px;
-  padding:26px; box-shadow:var(--shadow);
-  transform:rotate(0.6deg);
-  animation:float 7s ease-in-out infinite;
+.btn-teal{background:var(--brand-teal); color:#fff;}
+.btn-teal:hover{background:var(--brand-teal-deep); transform:translateY(-2px);}
+.btn-ghost-teal{border:1px solid var(--brand-navy); color:var(--brand-navy); background:transparent;}
+.btn-ghost-teal:hover{border-color:var(--brand-teal); color:var(--brand-teal-deep); transform:translateY(-2px);}
+
+/* ---------- HUB2 (portada diagram) ---------- */
+.hub2{position:relative; max-width:620px; margin:48px auto 40px; aspect-ratio:1/1; display:grid; place-items:center;}
+.hub2-ring{
+  position:absolute; inset:8%; border-radius:50%;
+  background:conic-gradient(var(--brand-teal) 0deg 180deg, var(--brand-coral) 180deg 360deg);
+  opacity:0.16;
 }
-@keyframes float{0%,100%{transform:rotate(0.6deg) translateY(0);} 50%{transform:rotate(0.6deg) translateY(-8px);}}
-.panel-head{display:flex; align-items:center; gap:10px; margin-bottom:22px;}
-.panel-dot{width:9px; height:9px; border-radius:50%; background:var(--sage); box-shadow:0 0 0 4px rgba(78,107,91,0.18);}
-.panel-title{font-family:var(--serif); font-weight:600; font-size:17px; color:var(--sage-deep);}
-.panel-live{margin-left:auto; font-family:var(--mono); font-size:10.5px; letter-spacing:0.1em; color:var(--clay-deep); border:1px solid var(--clay); padding:2px 8px; border-radius:20px;}
-.panel-stats{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:22px;}
-.stat{background:var(--bg); border:1px solid var(--line); border-radius:3px; padding:14px 16px;}
-.stat-label{display:block; font-size:12px; color:var(--ink-soft); margin-bottom:6px;}
-.stat-value{font-family:var(--mono); font-size:26px; font-weight:500; color:var(--sage-deep);}
-.stat-clay{color:var(--clay-deep);}
-.panel-chart{border:1px solid var(--line); border-radius:3px; padding:12px 16px 8px; margin-bottom:20px;}
-.spark{width:100%; height:56px; display:block;}
-.panel-chart-label{font-size:11.5px; color:var(--ink-soft);}
-.panel-alerts{list-style:none; display:flex; flex-direction:column; gap:10px; font-size:13.5px; color:var(--ink-soft);}
-.panel-alerts li{display:flex; align-items:center; gap:10px;}
-.alert-dot{width:7px; height:7px; border-radius:50%; flex-shrink:0;}
-.alert-amber{background:var(--gold);}
-.alert-clay{background:var(--clay);}
-.alert-sage{background:var(--sage);}
+.hub2-ring::after{content:""; position:absolute; inset:14%; border-radius:50%; background:var(--bg);}
+.hub2-core{position:relative; z-index:2; width:106px; height:106px; border-radius:50%; background:#fff; display:flex; align-items:center; justify-content:center; box-shadow:0 16px 34px -16px rgba(28,63,115,0.45);}
+.hub2-node{
+  position:absolute; width:150px; text-decoration:none; text-align:center; font-size:13px; font-weight:600; color:var(--brand-navy);
+  display:flex; flex-direction:column; align-items:center; gap:9px; line-height:1.3; transition:transform .2s ease;
+}
+.hub2-node:hover{transform:translateY(-3px);}
+.hub2-node:hover .hub2-ic{border-color:var(--brand-teal); box-shadow:0 12px 24px -10px rgba(18,135,156,0.4);}
+.hub2-ic{width:52px; height:52px; border-radius:14px; background:#fff; border:1px solid var(--line-strong); display:flex; align-items:center; justify-content:center; box-shadow:0 8px 18px -12px rgba(28,63,115,0.3); transition:all .2s ease;}
+.hn-1{top:2%; left:50%; transform:translateX(-50%);}
+.hn-2{top:20%; right:-2%;}
+.hn-3{bottom:20%; right:0%;}
+.hn-4{bottom:2%; left:50%; transform:translateX(-50%);}
+.hn-5{bottom:20%; left:0%;}
+.hn-6{top:20%; left:-2%;}
+@media(max-width:640px){
+  .hub2{aspect-ratio:auto; display:flex; flex-wrap:wrap; justify-content:center; gap:24px 18px; max-width:420px;}
+  .hub2-ring{display:none;}
+  .hub2-core{order:0; width:100%; flex-basis:100%; margin-bottom:6px;}
+  .hub2-node{position:static; width:110px;}
+}
+
+/* ---------- SECTION SHARED ---------- */
 
 /* ---------- SECTION SHARED ---------- */
 .section{padding:100px 0;}
@@ -305,48 +319,56 @@ h1,h2,h3{font-family:var(--serif); font-weight:600; letter-spacing:-0.01em; colo
 
 <main id="top">
 
-<section class="hero">
-  <div class="hero-rings" aria-hidden="true"></div>
-  <div class="wrap hero-grid">
-    <div class="hero-copy">
-      <p class="eyebrow">Software para residencias de ancianos</p>
-      <h1>Del caos<br><em>al control.</em></h1>
-      <p class="hero-sub">Un ecosistema que une el cuidado del residente, las finanzas, el inventario y el personal en un mismo lugar — para que su equipo dedique el tiempo a las personas, no al papeleo.</p>
-      <div class="hero-actions">
-        <a href="#cta" class="btn btn-primary">Solicitar una demo</a>
-        <a href="#solucion" class="btn btn-ghost">Ver cómo funciona</a>
+<section class="portada">
+  <div class="portada-rings" aria-hidden="true"></div>
+  <div class="wrap portada-inner">
+    <p class="eyebrow" style="justify-content:center;">Software para residencias de ancianos</p>
+    <h1 class="portada-title">Del caos<br><em>al control.</em></h1>
+    <p class="hero-sub" style="margin:0 auto 8px; text-align:center;">Un ecosistema que une el cuidado del residente, las finanzas, el inventario y el personal en un mismo lugar. Explore cada área tocando una categoría.</p>
+
+    <div class="hub2" role="navigation" aria-label="Categorías del sistema">
+      <div class="hub2-ring" aria-hidden="true"></div>
+      <div class="hub2-core" aria-hidden="true">
+        <svg viewBox="0 0 100 100" width="86" height="86">
+          <circle cx="50" cy="50" r="50" fill="var(--brand-teal)"/>
+          <g fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="38" cy="30" r="6" fill="#fff" stroke="none"/>
+            <path d="M38 38 C 30 40, 27 48, 28 58 M38 38 C 46 40, 49 48, 47 58 M30 47 L46 47"/>
+            <circle cx="63" cy="34" r="5.5" fill="#fff" stroke="none"/>
+            <path d="M63 41 C 56 44, 53 52, 55 62 M63 41 C 70 44, 73 50, 71 58 M56 50 L70 50"/>
+            <path d="M47 58 C 52 62, 58 62, 63 58" stroke-width="3"/>
+          </g>
+        </svg>
       </div>
+
+      <a href="#finanzas" class="hub2-node hn-1"><span class="hub2-ic">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="var(--brand-navy)" stroke-width="1.7"><rect x="4" y="3" width="16" height="18" rx="1.5"/><line x1="7" y1="7" x2="17" y2="7"/><line x1="7" y1="11" x2="9.5" y2="11"/><line x1="12" y1="11" x2="14.5" y2="11"/><line x1="7" y1="15" x2="9.5" y2="15"/><line x1="12" y1="15" x2="14.5" y2="15"/><line x1="17" y1="11" x2="17" y2="18"/></svg>
+      </span>Gestión<br>Financiera</a>
+
+      <a href="#residentes" class="hub2-node hn-2"><span class="hub2-ic">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="var(--brand-coral)" stroke-width="1.7"><path d="M12 21s-7-4.35-9.5-8.8C.7 8.4 2.6 5 6 5c2 0 3.5 1.2 6 3.6C14.5 6.2 16 5 18 5c3.4 0 5.3 3.4 3.5 7.2C19 16.65 12 21 12 21z"/><path d="M9 12h1.6l1-2 1.4 4 1-2H16"/></svg>
+      </span>Salud y<br>Cuidado</a>
+
+      <a href="#inventario" class="hub2-node hn-3"><span class="hub2-ic">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="var(--brand-navy)" stroke-width="1.7"><path d="M3 8l9-4 9 4-9 4-9-4z"/><path d="M3 8v8l9 4 9-4V8"/><path d="M12 12v8"/></svg>
+      </span>Gestión de<br>Inventario</a>
+
+      <a href="#notificaciones" class="hub2-node hn-4"><span class="hub2-ic">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="var(--brand-coral)" stroke-width="1.7"><path d="M4 5h16v11H8l-4 4V5z"/><line x1="7.5" y1="9" x2="16.5" y2="9"/><line x1="7.5" y1="12.5" x2="13" y2="12.5"/></svg>
+      </span>Comunicaciones</a>
+
+      <a href="#personal" class="hub2-node hn-5"><span class="hub2-ic">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="var(--brand-navy)" stroke-width="1.7"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17.5" cy="9.5" r="2.4"/><path d="M15.7 14a5 5 0 0 1 5.3 5"/></svg>
+      </span>Recursos<br>Humanos</a>
+
+      <a href="#residentes" class="hub2-node hn-6"><span class="hub2-ic">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="var(--brand-coral)" stroke-width="1.7"><rect x="4" y="3" width="16" height="18" rx="1.5"/><circle cx="9.5" cy="9" r="2"/><path d="M6.5 15c0-1.9 1.3-3 3-3s3 1.1 3 3"/><line x1="14.5" y1="7" x2="17" y2="7"/><line x1="14.5" y1="10" x2="17" y2="10"/></svg>
+      </span>Registro de<br>Residentes</a>
     </div>
 
-    <div class="hero-panel" role="img" aria-label="Vista previa del panel de mando con ocupación, pagos pendientes y alertas en tiempo real">
-      <div class="panel-card">
-        <div class="panel-head">
-          <span class="panel-dot"></span>
-          <span class="panel-title">Mando Central</span>
-          <span class="panel-live">EN VIVO</span>
-        </div>
-        <div class="panel-stats">
-          <div class="stat">
-            <span class="stat-label">Ocupación actual</span>
-            <span class="stat-value" data-count="45" data-suffix="/50">0</span>
-          </div>
-          <div class="stat">
-            <span class="stat-label">Pagos pendientes</span>
-            <span class="stat-value stat-clay" data-count="8250" data-prefix="€">0</span>
-          </div>
-        </div>
-        <div class="panel-chart">
-          <svg viewBox="0 0 300 70" preserveAspectRatio="none" class="spark">
-            <polyline points="0,55 30,48 60,50 90,38 120,42 150,26 180,32 210,18 240,24 270,10 300,16" fill="none" stroke="var(--sage)" stroke-width="2.5"/>
-          </svg>
-          <span class="panel-chart-label">Gastos del mes</span>
-        </div>
-        <ul class="panel-alerts">
-          <li><span class="alert-dot alert-amber"></span>Bajo stock de Paracetamol</li>
-          <li><span class="alert-dot alert-clay"></span>3 pagos vencidos</li>
-          <li><span class="alert-dot alert-sage"></span>Cumpleaños: Roberto Pérez</li>
-        </ul>
-      </div>
+    <div class="hero-actions" style="justify-content:center; margin-top:8px;">
+      <a href="#cta" class="btn btn-teal">Solicitar una demo</a>
+      <a href="sistema.html" class="btn btn-ghost-teal">Probar el sistema</a>
     </div>
   </div>
 </section>
@@ -508,10 +530,10 @@ h1,h2,h3{font-family:var(--serif); font-weight:600; letter-spacing:-0.01em; colo
   </div>
 </section>
 
-<section class="section">
+<section class="section" id="inventario">
   <div class="wrap">
     <p class="eyebrow">Operación diaria</p>
-    <h2 class="section-title">Operaciones sin sorpresas.</h2>
+    <h2 class="section-title" id="personal">Operaciones sin sorpresas.</h2>
     <p class="section-lead">Asegure la disponibilidad de insumos críticos y centralice la información de su equipo, todo en un mismo lugar.</p>
 
     <div class="two-col">
@@ -594,7 +616,7 @@ h1,h2,h3{font-family:var(--serif); font-weight:600; letter-spacing:-0.01em; colo
   </div>
 </section>
 
-<section class="section section-alt">
+<section class="section section-alt" id="notificaciones">
   <div class="wrap two-col">
     <div>
       <p class="eyebrow">Anticípese</p>
