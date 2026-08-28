@@ -112,6 +112,8 @@ input,select,textarea{font-family:var(--sans); font-size:14px;}
 .stat-card{background:var(--card); border:1px solid var(--line-strong); border-radius:8px; padding:18px; border-top:3px solid var(--teal);}
 .stat-card.navy-top{border-top-color:var(--navy);}
 .stat-card.warn-top{border-top-color:var(--warn);}
+.stat-card.kpi-click{cursor:pointer; transition:transform .15s ease, box-shadow .15s ease;}
+.stat-card.kpi-click:hover{transform:translateY(-2px); box-shadow:0 10px 20px -12px rgba(14,71,150,0.35);}
 .stat-card .label{font-size:11.5px; color:var(--ink-soft); margin-bottom:8px; display:block;}
 .stat-card .value{font-family:var(--mono); font-size:25px; font-weight:600; color:var(--navy);}
 .stat-card .value.warn{color:var(--warn);}
@@ -210,6 +212,14 @@ tr:last-child td{border-bottom:none;}
 
 .badge-count{background:var(--warn); color:#fff; font-family:var(--mono); font-size:10px; padding:1px 6px; border-radius:10px; margin-left:auto;}
 
+.live-clock{font-family:var(--mono); font-size:12.5px; color:var(--navy); background:var(--ice); border:1px solid var(--line-strong); padding:7px 12px; border-radius:20px; white-space:nowrap;}
+
+/* ---------- BITÁCORA DE ACTIVIDAD ---------- */
+.activity-row{display:flex; gap:10px; align-items:flex-start; padding:9px 0; border-bottom:1px dashed var(--line); font-size:12.5px;}
+.activity-row:last-child{border-bottom:none;}
+.activity-time{font-family:var(--mono); font-size:11px; color:var(--ink-soft); min-width:44px;}
+.activity-dot{width:7px; height:7px; border-radius:50%; background:var(--teal); margin-top:5px; flex-shrink:0;}
+
 /* ---------- PRIVACIDAD POR INACTIVIDAD ---------- */
 .content{transition:filter .5s ease;}
 .content.blurred{filter:blur(14px); pointer-events:none; user-select:none;}
@@ -282,11 +292,10 @@ tr:last-child td{border-bottom:none;}
     <ul class="nav-list">
       <li><button data-view="inventario"><span class="nav-ic">◔</span>Inventario</button></li>
       <li><button data-view="rrhh"><span class="nav-ic">◒</span>Recursos humanos</button></li>
-      <li><button data-view="comunicaciones"><span class="nav-ic">◓</span>Comunicaciones</button></li>
+      <li><button data-view="comunicaciones"><span class="nav-ic">◓</span>Resumen de residentes</button></li>
     </ul>
     <div class="sidebar-foot">
-      <button class="btn btn-ghost btn-sm" style="width:100%; border-color:rgba(255,255,255,0.3); color:#EAF3FB;" onclick="openResetModal()">⟲ Restablecer sistema</button>
-      <p style="margin-top:10px;">Prototipo funcional — datos guardados<br>localmente en este navegador.<br><strong style="color:#C7DCF0;">Ctrl+Z</strong> deshace la última acción.</p>
+      <p>Sistema de gestión — datos guardados<br>localmente en este navegador.</p>
     </div>
   </aside>
 
@@ -297,7 +306,11 @@ tr:last-child td{border-bottom:none;}
         <h1 id="viewTitle">Dashboard</h1>
         <div class="topbar-sub" id="viewDate"></div>
       </div>
-      <button class="btn btn-primary btn-sm" onclick="openResidentModal()">+ Nuevo residente</button>
+      <div style="display:flex; align-items:center; gap:14px;">
+        <div class="live-clock" id="liveClock">—</div>
+        <button class="btn btn-ghost btn-sm btn-icon" onclick="openActivityLog()" title="Bitácora de actividad (todos los movimientos)">⋮</button>
+        <button class="btn btn-primary btn-sm" onclick="openResidentModal()">+ Nuevo residente</button>
+      </div>
     </div>
 
     <div class="content" id="contentArea">
@@ -332,8 +345,8 @@ tr:last-child td{border-bottom:none;}
               <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="var(--navy)" stroke-width="1.7"><path d="M3 8l9-4 9 4-9 4-9-4z"/><path d="M3 8v8l9 4 9-4V8"/><path d="M12 12v8"/></svg>
             </span>Gestión de<br>Inventario</button>
             <button type="button" class="dash-hub-node dhn-4" onclick="switchView('comunicaciones')"><span class="dash-hub-ic">
-              <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="var(--teal-deep)" stroke-width="1.7"><path d="M4 5h16v11H8l-4 4V5z"/><line x1="7.5" y1="9" x2="16.5" y2="9"/><line x1="7.5" y1="12.5" x2="13" y2="12.5"/></svg>
-            </span>Comunicaciones</button>
+              <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="var(--teal-deep)" stroke-width="1.7"><path d="M4 6a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6z"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="15.5" x2="13" y2="15.5"/></svg>
+            </span>Resumen de<br>Residentes</button>
             <button type="button" class="dash-hub-node dhn-5" onclick="switchView('rrhh')"><span class="dash-hub-ic">
               <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="var(--navy)" stroke-width="1.7"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17.5" cy="9.5" r="2.4"/><path d="M15.7 14a5 5 0 0 1 5.3 5"/></svg>
             </span>Recursos<br>Humanos</button>
@@ -344,12 +357,14 @@ tr:last-child td{border-bottom:none;}
         </div>
 
         <div class="grid-stats">
-          <div class="stat-card"><span class="label">Residentes activos</span><span class="value" id="dbResidentes">0</span></div>
-          <div class="stat-card warn-top"><span class="label">Cuotas pendientes este mes</span><span class="value warn" id="dbCuotasPend">S/ 0</span></div>
-          <div class="stat-card navy-top"><span class="label">Gastos del mes</span><span class="value" id="dbGastos">S/ 0</span></div>
-          <div class="stat-card warn-top"><span class="label">Bajo stock</span><span class="value warn" id="dbStock">0 items</span></div>
-          <div class="stat-card navy-top"><span class="label">Personal por pagar</span><span class="value" id="dbPersonalPend">S/ 0</span></div>
+          <div class="stat-card kpi-click" onclick="openDrilldown('residentes')"><span class="label">Residentes activos</span><span class="value" id="dbResidentes">0</span></div>
+          <div class="stat-card kpi-click" onclick="openDrilldown('personal')"><span class="label">Personal activo</span><span class="value" id="dbPersonalActivo">0</span></div>
+          <div class="stat-card warn-top kpi-click" onclick="openDrilldown('cuotasPend')"><span class="label">Cuotas pendientes este mes</span><span class="value warn" id="dbCuotasPend">S/ 0</span></div>
+          <div class="stat-card navy-top kpi-click" onclick="openDrilldown('personalPend')"><span class="label">Personal por pagar</span><span class="value" id="dbPersonalPend">S/ 0</span></div>
+          <div class="stat-card navy-top kpi-click" onclick="openDrilldown('gastos')"><span class="label">Gastos del mes</span><span class="value" id="dbGastos">S/ 0</span></div>
+          <div class="stat-card warn-top kpi-click" onclick="openDrilldown('stock')"><span class="label">Bajo stock</span><span class="value warn" id="dbStock">0 items</span></div>
         </div>
+        <p style="font-size:11.5px; color:var(--ink-soft); margin:-14px 0 20px;">Toca cualquier tarjeta para ver el detalle completo.</p>
 
         <div class="two-col-grid">
           <div class="card chart-card">
@@ -371,7 +386,7 @@ tr:last-child td{border-bottom:none;}
           <button class="btn btn-primary btn-sm" onclick="openResidentModal()">+ Nuevo residente</button>
         </div>
         <div class="search-bar">
-          <input type="text" id="residentSearch" placeholder="Buscar por nombre, DNI o habitación…" oninput="renderResidents()">
+          <input type="text" id="residentSearch" placeholder="Buscar por nombre o DNI…" oninput="renderResidents()">
           <select id="residentFilter" onchange="renderResidents()">
             <option value="">Todos los estados</option>
             <option value="Activo">Activo</option>
@@ -381,7 +396,7 @@ tr:last-child td{border-bottom:none;}
         </div>
         <div class="card table-wrap">
           <table>
-            <thead><tr><th>Residente</th><th>Habitación</th><th>Ingreso</th><th>Plan mensual</th><th>Contrato</th><th>Estado</th><th></th></tr></thead>
+            <thead><tr><th>Residente</th><th>Grado</th><th>Ingreso</th><th>Plan mensual</th><th>Contrato</th><th>Estado</th><th></th></tr></thead>
             <tbody id="residentTableBody"></tbody>
           </table>
           <div class="empty-state" id="residentEmpty" style="display:none;">Aún no hay residentes registrados. Agrega el primero con su contrato digitalizado.</div>
@@ -606,7 +621,7 @@ tr:last-child td{border-bottom:none;}
           </div>
           <div class="card table-wrap">
             <table>
-              <thead><tr><th>Empleado</th><th>Sueldo</th><th>Pagado</th><th>Estado</th><th>Comprobante</th><th></th></tr></thead>
+              <thead><tr><th>Empleado</th><th>Sueldo</th><th>Pagado</th><th>Fecha de pago</th><th>Estado</th><th>Comprobante</th><th></th></tr></thead>
               <tbody id="pagosTableBody"></tbody>
             </table>
             <div class="empty-state" id="pagosEmpty" style="display:none;">No hay personal activo este mes.</div>
@@ -616,32 +631,19 @@ tr:last-child td{border-bottom:none;}
 
       <!-- COMUNICACIONES -->
       <section class="view" id="view-comunicaciones">
-        <div class="subtabs" id="comSubtabs">
-          <button data-comtab="anuncios" class="active">Anuncios internos</button>
-          <button data-comtab="familia">Contacto con familiares</button>
+        <div class="section-head">
+          <p class="eyebrow">Perfil completo por residente</p>
+          <h2 style="font-size:19px;">Resumen general</h2>
         </div>
-
-        <div class="subview active" id="com-anuncios">
-          <div class="section-head">
-            <p class="eyebrow">Comunicados del equipo</p>
-            <button class="btn btn-primary btn-sm" onclick="openAnnouncementModal()">+ Nuevo anuncio</button>
+        <div class="two-col-grid">
+          <div class="card" style="align-self:start;">
+            <div class="search-bar" style="margin-bottom:12px;">
+              <input type="text" id="resumenSearch" placeholder="Buscar residente…" oninput="renderResumenList()">
+            </div>
+            <div id="resumenList" style="display:flex; flex-direction:column; gap:2px; max-height:600px; overflow-y:auto;"></div>
+            <div class="empty-state" id="resumenListEmpty" style="display:none;">No hay residentes registrados.</div>
           </div>
-          <div id="announcementList" style="display:flex; flex-direction:column; gap:12px;"></div>
-          <div class="empty-state" id="announcementEmpty" style="display:none;">No hay anuncios publicados.</div>
-        </div>
-
-        <div class="subview" id="com-familia">
-          <div class="section-head">
-            <p class="eyebrow">Bitácora de contacto</p>
-            <button class="btn btn-primary btn-sm" onclick="openFamilyLogModal()">+ Registrar contacto</button>
-          </div>
-          <div class="card table-wrap">
-            <table>
-              <thead><tr><th>Fecha</th><th>Residente</th><th>Familiar</th><th>Medio</th><th>Nota</th><th></th></tr></thead>
-              <tbody id="familyLogTableBody"></tbody>
-            </table>
-            <div class="empty-state" id="familyLogEmpty" style="display:none;">Aún no hay contactos registrados.</div>
-          </div>
+          <div id="resumenDetail"><div class="empty-state">Selecciona un residente de la lista para ver su resumen completo: datos, contrato, archivos, familiares, salud y pagos.</div></div>
         </div>
       </section>
 
@@ -665,9 +667,16 @@ tr:last-child td{border-bottom:none;}
       <div class="field"><label>DNI</label><input id="rDni" type="text"></div>
     </div>
     <div class="field-row3">
-      <div class="field"><label>Fecha de nacimiento</label><input id="rBirth" type="date"></div>
-      <div class="field"><label>Habitación</label><input id="rRoom" type="text"></div>
-      <div class="field"><label>Estado</label><select id="rStatus"><option>Activo</option><option>Temporal</option><option>Egresado</option></select></div>
+      <div class="field"><label>Fecha de nacimiento</label><input id="rBirth" type="date" onchange="updateResidentAge()"></div>
+      <div class="field"><label>Edad</label><input id="rEdad" type="text" readonly disabled placeholder="Se calcula sola" style="background:var(--bg-deep);"></div>
+      <div class="field"><label>Grado de dependencia</label><select id="rDependencia"><option>2</option><option>3</option><option>4</option></select></div>
+    </div>
+    <div class="field-row3">
+      <div class="field"><label>Peso (kg)</label><input id="rPeso" type="number" min="0" step="0.1"></div>
+      <div class="field"><label>Altura (cm)</label><input id="rAltura" type="number" min="0" step="1"></div>
+      <div class="field"><label>Estado</label>
+        <select id="rStatus"><option>Activo</option><option>Temporal</option><option>Egresado</option><option>Dependencia parcial</option><option>Dependencia total</option><option>Independiente</option></select>
+      </div>
     </div>
 
     <p class="modal-sub">Contrato</p>
@@ -676,10 +685,17 @@ tr:last-child td{border-bottom:none;}
       <div class="field"><label>Fecha de ingreso</label><input id="rAdmission" type="date"></div>
       <div class="field"><label>Plan mensual (S/) *</label><input id="rPlanAmount" type="number" min="0" step="10" value="1200"></div>
     </div>
-    <div class="field file-field">
-      <label>Contrato digitalizado (foto o PDF)</label>
-      <input id="rContractFile" type="file" accept="image/*,application/pdf">
-      <div id="rContractFilePreview" style="margin-top:8px;"></div>
+    <div class="field-row">
+      <div class="field file-field">
+        <label>Contrato firmado (foto o PDF)</label>
+        <input id="rContractFile" type="file" accept="image/*,application/pdf">
+        <div id="rContractFilePreview" style="margin-top:8px;"></div>
+      </div>
+      <div class="field file-field">
+        <label>Otros requisitos (DNI, recibo, carnet de vacunas… puedes subir varios a la vez)</label>
+        <input id="rOtherFiles" type="file" accept="image/*,application/pdf" multiple>
+        <div id="rOtherFilesPreview" style="margin-top:8px; display:flex; flex-wrap:wrap; gap:6px;"></div>
+      </div>
     </div>
 
     <p class="modal-sub">Contacto de emergencia y familiares responsables</p>
@@ -688,15 +704,28 @@ tr:last-child td{border-bottom:none;}
       <div class="field"><label>Parentesco</label><input id="rEmergencyRelation" type="text" placeholder="Hija, hijo, sobrina…"></div>
       <div class="field"><label>Teléfono</label><input id="rEmergencyPhone" type="text"></div>
     </div>
+    <div class="field-row">
+      <div class="field"><label>Dirección del familiar</label><input id="rEmergencyAddress" type="text" placeholder="Av., calle, distrito…"></div>
+      <div class="field file-field">
+        <label>Archivo del contacto de emergencia (opcional)</label>
+        <input id="rEmergencyFile" type="file" accept="image/*,application/pdf">
+        <div id="rEmergencyFilePreview" style="margin-top:6px;"></div>
+      </div>
+    </div>
     <div id="familyMembersList" style="display:flex; flex-direction:column; gap:8px; margin-bottom:10px;"></div>
     <button type="button" class="btn btn-ghost btn-sm" onclick="addFamilyRow()">+ Agregar otro familiar</button>
 
     <p class="modal-sub">Salud básica</p>
-    <div class="field-row">
+    <div class="field-row3">
       <div class="field"><label>Nivel de atención</label><select id="rCareLevel"><option>Básico</option><option>Intermedio</option><option>Intensivo</option></select></div>
-      <div class="field"><label>Médico de cabecera</label><input id="rDoctor" type="text"></div>
+      <div class="field"><label>Profesional a cargo</label><select id="rProfRole"><option value="">— Sin especificar —</option><option>Médico</option><option>Nutricionista</option><option>Asistente social</option><option>Enfermera</option></select></div>
+      <div class="field"><label>Nombre del profesional (opcional)</label><input id="rProfName" type="text" placeholder="Escribe el nombre"></div>
     </div>
-    <div class="field"><label>Alergias</label><input id="rAllergies" type="text" placeholder="Ej. Penicilina, AINEs…"></div>
+    <div class="field">
+      <label>Historial clínico</label>
+      <div id="historialClinicoList" style="display:flex; flex-direction:column; gap:6px;"></div>
+      <p style="font-size:11px; color:var(--ink-soft); margin-top:6px;">Presiona Enter al final de una línea para agregar una nueva.</p>
+    </div>
 
     <div class="modal-actions">
       <button class="btn btn-ghost btn-sm" onclick="closeModal('modalResident')">Cancelar</button>
@@ -711,33 +740,45 @@ tr:last-child td{border-bottom:none;}
     <h3 id="saludModalTitle">Salud y cuidado</h3>
     <input type="hidden" id="saludResidentId">
 
-    <p class="modal-sub">Estado clínico</p>
-    <div class="field-row">
-      <div class="field"><label>Nivel de atención</label><select id="sCareLevel"><option>Básico</option><option>Intermedio</option><option>Intensivo</option></select></div>
-      <div class="field"><label>Médico de cabecera</label><input id="sDoctor" type="text"></div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px; background:var(--bg-deep); border:1px solid var(--line-strong); border-radius:6px; padding:10px 14px;">
+      <div>
+        <p class="eyebrow" style="margin-bottom:2px;">Registro del día</p>
+        <span id="saludSelectedDateLabel" style="font-family:var(--serif); font-weight:600; color:var(--navy); font-size:16px;">—</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <button class="btn btn-ghost btn-sm" onclick="saludGoToday()">Hoy</button>
+        <button class="btn btn-ghost btn-sm btn-icon" onclick="toggleSaludCalendar()" title="Ver otro día">📅</button>
+      </div>
     </div>
-    <div class="field"><label>Alergias</label><input id="sAllergies" type="text"></div>
+    <div id="saludCalendarWrap" style="display:none; margin-bottom:16px; border:1px solid var(--line-strong); border-radius:6px; padding:12px; background:var(--card);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <button class="btn btn-ghost btn-sm btn-icon" onclick="calSaludPrev()">‹</button>
+        <span id="calSaludLabel" style="font-family:var(--mono); font-size:12px;">—</span>
+        <button class="btn btn-ghost btn-sm btn-icon" onclick="calSaludNext()">›</button>
+      </div>
+      <div id="calSaludGrid" class="cal-grid"></div>
+      <p style="font-size:11px; color:var(--ink-soft); margin-top:8px;">Los días con punto ya tienen un registro guardado. Para corregir un día pasado, selecciónalo aquí y guarda de nuevo.</p>
+    </div>
+
+    <p class="modal-sub">Estado clínico del día</p>
+    <div class="field-row3">
+      <div class="field"><label>Nivel de atención</label><select id="sCareLevel"><option>Básico</option><option>Intermedio</option><option>Intensivo</option></select></div>
+      <div class="field"><label>Peso (kg)</label><input id="sPeso" type="number" min="0" step="0.1"></div>
+      <div class="field"><label>Ánimo / evolución del día</label><input id="sEvolution" type="text" placeholder="Ej. Buen ánimo, mejora en movilidad…"></div>
+    </div>
     <div class="field"><label>Recomendaciones médicas</label><textarea id="sRecommendations" rows="2"></textarea></div>
 
-    <p class="modal-sub">Medicamentos</p>
+    <p class="modal-sub">Indicaciones médicas</p>
     <div id="medsList" style="display:flex; flex-direction:column; gap:8px; margin-bottom:10px;"></div>
-    <button type="button" class="btn btn-ghost btn-sm" onclick="addMedRow()">+ Agregar medicamento</button>
+    <button type="button" class="btn btn-ghost btn-sm" onclick="addMedRow()">+ Agregar indicación</button>
 
-    <p class="modal-sub">Cronograma diario (horarios, comidas, baños, actividades)</p>
+    <p class="modal-sub">Dieta del día</p>
     <div id="scheduleList" style="display:flex; flex-direction:column; gap:8px; margin-bottom:10px;"></div>
-    <button type="button" class="btn btn-ghost btn-sm" onclick="addScheduleRow()">+ Agregar horario</button>
-
-    <p class="modal-sub">Evolución y notas de mejora</p>
-    <div class="field-row">
-      <div class="field" style="grid-column:1/2;"><label>Fecha</label><input id="evoDate" type="date"></div>
-      <div class="field" style="grid-column:2/4;"><label>Nota</label><input id="evoNote" type="text" placeholder="Ej. Mejora en movilidad, buen ánimo…"></div>
-    </div>
-    <button type="button" class="btn btn-ghost btn-sm" style="margin-bottom:14px;" onclick="addEvolutionNote()">+ Agregar nota</button>
-    <div id="evolutionLog" style="display:flex; flex-direction:column; gap:8px; max-height:180px; overflow-y:auto;"></div>
+    <button type="button" class="btn btn-ghost btn-sm" onclick="addScheduleRow()">+ Agregar comida/horario</button>
 
     <div class="modal-actions">
       <button class="btn btn-ghost btn-sm" onclick="closeModal('modalSalud')">Cerrar</button>
-      <button class="btn btn-primary btn-sm" onclick="saveSalud()">Guardar cambios</button>
+      <button class="btn btn-primary btn-sm" onclick="saveSalud()">Guardar registro del día</button>
     </div>
   </div>
 </div>
@@ -812,9 +853,18 @@ tr:last-child td{border-bottom:none;}
       <div class="field"><label>Nombre completo *</label><input id="staffName" type="text"></div>
       <div class="field"><label>DNI</label><input id="staffDni" type="text"></div>
     </div>
-    <div class="field-row">
+    <div class="field-row3">
+      <div class="field"><label>Edad</label><input id="staffEdad" type="number" min="0" max="100"></div>
+      <div class="field"><label>Sexo</label><select id="staffSexo"><option value="">— No especifica —</option><option>Femenino</option><option>Masculino</option><option>Otro</option></select></div>
       <div class="field"><label>Cargo *</label><input id="staffRole" type="text" placeholder="Enfermera, cuidador…"></div>
-      <div class="field"><label>Turno</label><select id="staffShift"><option>Mañana</option><option>Tarde</option><option>Noche</option></select></div>
+    </div>
+    <div class="field">
+      <label>Turno (puede cubrir más de uno)</label>
+      <div style="display:flex; gap:16px; flex-wrap:wrap; padding:9px 0;">
+        <label style="display:flex; align-items:center; gap:6px; font-size:13.5px;"><input type="checkbox" class="staff-shift-cb" value="Mañana"> Mañana</label>
+        <label style="display:flex; align-items:center; gap:6px; font-size:13.5px;"><input type="checkbox" class="staff-shift-cb" value="Tarde"> Tarde</label>
+        <label style="display:flex; align-items:center; gap:6px; font-size:13.5px;"><input type="checkbox" class="staff-shift-cb" value="Noche"> Noche</label>
+      </div>
     </div>
     <div class="field-row">
       <div class="field"><label>Teléfono</label><input id="staffPhone" type="text"></div>
@@ -839,7 +889,7 @@ tr:last-child td{border-bottom:none;}
     <input type="hidden" id="pagoStaffEditMode" value="0">
     <div class="field-row">
       <div class="field"><label>Monto a pagar (S/) *</label><input id="pagoStaffMonto" type="number" min="0" step="0.01"></div>
-      <div class="field"><label>Fecha *</label><input id="pagoStaffFecha" type="date"></div>
+      <div class="field"><label>Fecha de pago * <span style="font-weight:400; color:var(--ink-soft);">(hoy por defecto, editable)</span></label><input id="pagoStaffFecha" type="date"></div>
     </div>
     <div class="field file-field"><label>Comprobante — boleta de pago (opcional)</label><input id="pagoStaffFile" type="file" accept="image/*,application/pdf"></div>
     <div class="modal-actions">
@@ -849,23 +899,11 @@ tr:last-child td{border-bottom:none;}
   </div>
 </div>
 
-<!-- MODAL: ANUNCIO -->
-<div class="modal-overlay" id="modalAnnouncement">
-  <div class="modal">
-    <h3>Nuevo anuncio</h3>
-    <div class="field"><label>Título *</label><input id="annTitle" type="text"></div>
-    <div class="field"><label>Mensaje *</label><textarea id="annBody" rows="3"></textarea></div>
-    <div class="modal-actions">
-      <button class="btn btn-ghost btn-sm" onclick="closeModal('modalAnnouncement')">Cancelar</button>
-      <button class="btn btn-primary btn-sm" onclick="saveAnnouncement()">Publicar</button>
-    </div>
-  </div>
-</div>
-
 <!-- MODAL: CONTACTO FAMILIAR -->
 <div class="modal-overlay" id="modalFamilyLog">
   <div class="modal">
     <h3>Registrar contacto con familia</h3>
+    <input type="hidden" id="flResidentFixed">
     <div class="field"><label>Residente *</label><select id="flResident"></select></div>
     <div class="field-row">
       <div class="field"><label>Familiar</label><input id="flFamilyName" type="text"></div>
@@ -892,17 +930,38 @@ tr:last-child td{border-bottom:none;}
   </div>
 </div>
 
-<!-- MODAL: RESTABLECER SISTEMA -->
-<div class="modal-overlay" id="modalReset">
-  <div class="modal">
-    <h3>Restablecer sistema</h3>
-    <p style="font-size:14px; color:var(--ink-soft); margin-bottom:16px;">Elige qué quieres limpiar. Esta acción no se puede deshacer.</p>
-    <div style="display:flex; flex-direction:column; gap:10px;">
-      <button class="btn btn-ghost btn-sm" style="justify-content:flex-start;" onclick="cleanOrphansManual()">Solo corregir registros huérfanos (cuotas/pagos de residentes o personal ya eliminados)</button>
-      <button class="btn btn-danger btn-sm" style="justify-content:flex-start;" onclick="resetAllData()">Borrar TODOS los datos y empezar desde cero</button>
+<!-- MODAL: BITÁCORA DE ACTIVIDAD -->
+<div class="modal-overlay" id="modalActivity">
+  <div class="modal wide">
+    <h3>Bitácora de actividad</h3>
+    <p style="font-size:12.5px; color:var(--ink-soft); margin-bottom:16px;">Registro de todo lo que se hizo en el sistema, día por día. Los calendarios de cada módulo (citas, gastos, eventos) son independientes de esta bitácora.</p>
+    <div class="two-col-grid">
+      <div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <button class="btn btn-ghost btn-sm btn-icon" onclick="calActivityPrev()">‹</button>
+          <span id="calActivityLabel" style="font-family:var(--mono); font-size:12px;">—</span>
+          <button class="btn btn-ghost btn-sm btn-icon" onclick="calActivityNext()">›</button>
+        </div>
+        <div id="calActivityGrid" class="cal-grid"></div>
+      </div>
+      <div>
+        <h4 style="font-size:13.5px; color:var(--navy); margin-bottom:10px;" id="activityDayLabel">Hoy</h4>
+        <div id="activityList" style="max-height:340px; overflow-y:auto;"></div>
+      </div>
     </div>
     <div class="modal-actions">
-      <button class="btn btn-ghost btn-sm" onclick="closeModal('modalReset')">Cerrar</button>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('modalActivity')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: DESGLOSE DEL DASHBOARD -->
+<div class="modal-overlay" id="modalDrilldown">
+  <div class="modal wide">
+    <h3 id="drilldownTitle">Detalle</h3>
+    <div id="drilldownBody"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('modalDrilldown')">Cerrar</button>
     </div>
   </div>
 </div>
@@ -977,7 +1036,7 @@ function seedData(){
     {id:uid(), title:'Bienvenida al nuevo sistema', body:'A partir de hoy todo el registro de residentes, pagos y salud se maneja desde aquí.', date:todayISO()}
   ], familyLogs:[]};
 }
-function emptyData(){ return {residents:[], staff:[], inventory:[], gastos:[], gastoCategories:defaultGastoCategories(), cuotas:[], invMovements:[], staffPayments:[], announcements:[], familyLogs:[]}; }
+function emptyData(){ return {residents:[], staff:[], inventory:[], gastos:[], gastoCategories:defaultGastoCategories(), cuotas:[], invMovements:[], staffPayments:[], announcements:[], familyLogs:[], activityLog:[]}; }
 
 function loadData(){
   try{
@@ -986,6 +1045,7 @@ function loadData(){
       const parsed=JSON.parse(raw);
       if(!parsed.gastoCategories) parsed.gastoCategories = defaultGastoCategories();
       if(!parsed.familyLogs) parsed.familyLogs = [];
+      if(!parsed.activityLog) parsed.activityLog = [];
       return parsed;
     }
   }catch(e){ console.error(e); }
@@ -1001,29 +1061,65 @@ function showToast(msg){
   clearTimeout(t._timer); t._timer=setTimeout(()=>t.classList.remove('show'), 2600);
 }
 
-/* ---------- DESHACER GLOBAL (Ctrl+Z) ---------- */
-let undoStack = [];
-function pushUndoSnapshot(){
-  try{ undoStack.push(JSON.stringify(DATA)); if(undoStack.length>25) undoStack.shift(); }catch(e){ console.error(e); }
+/* ---------- BITÁCORA DE ACTIVIDAD (registro de todo lo que se hace) ---------- */
+function logActivity(text){
+  const now=new Date();
+  DATA.activityLog.push({date: toISODate(now), time: pad(now.getHours())+':'+pad(now.getMinutes()), text});
+  if(DATA.activityLog.length>3000) DATA.activityLog = DATA.activityLog.slice(-3000);
 }
-function performUndo(){
-  if(undoStack.length===0){ showToast('No hay nada que deshacer'); return; }
-  try{
-    DATA = JSON.parse(undoStack.pop());
-    saveData(DATA);
-    renderAll();
-    showToast('Última acción deshecha (Ctrl+Z)');
-  }catch(e){ console.error(e); }
-}
-document.addEventListener('keydown', e=>{
-  const key=e.key.toLowerCase();
-  if((e.ctrlKey||e.metaKey) && key==='z' && !e.shiftKey){
-    const tag=(document.activeElement && document.activeElement.tagName || '').toLowerCase();
-    if(tag==='input' || tag==='textarea') return; // no interferir con deshacer de texto dentro de un campo
-    e.preventDefault();
-    performUndo();
+function toISODate(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+
+function startLiveClock(){
+  function tick(){
+    const now=new Date();
+    const dateStr = now.toLocaleDateString('es-PE',{weekday:'short', day:'2-digit', month:'short'});
+    const timeStr = pad(now.getHours())+':'+pad(now.getMinutes())+':'+pad(now.getSeconds());
+    const el=document.getElementById('liveClock');
+    if(el) el.textContent = dateStr+' · '+timeStr;
   }
-});
+  tick(); setInterval(tick, 1000);
+}
+
+let calActivityYear, calActivityMonth, calActivitySelectedDate=null;
+function openActivityLog(){
+  const now=new Date();
+  if(calActivityYear==null){ calActivityYear=now.getFullYear(); calActivityMonth=now.getMonth(); }
+  calActivitySelectedDate = calActivitySelectedDate || toISODate(now);
+  renderCalActivity();
+  renderActivityDayList();
+  openModal('modalActivity');
+}
+function calActivityPrev(){ calActivityMonth--; if(calActivityMonth<0){calActivityMonth=11; calActivityYear--;} renderCalActivity(); }
+function calActivityNext(){ calActivityMonth++; if(calActivityMonth>11){calActivityMonth=0; calActivityYear++;} renderCalActivity(); }
+function renderCalActivity(){
+  document.getElementById('calActivityLabel').textContent = MONTH_SHORT[calActivityMonth]+' '+calActivityYear;
+  const daysInMonth=new Date(calActivityYear,calActivityMonth+1,0).getDate();
+  const firstDow=new Date(calActivityYear,calActivityMonth,1).getDay();
+  const DOW=['D','L','M','M','J','V','S'];
+  let html=DOW.map(d=>`<div class="cal-dow">${d}</div>`).join('');
+  for(let i=0;i<firstDow;i++) html+='<div class="cal-day empty"></div>';
+  const now=new Date();
+  const hasActivity={};
+  DATA.activityLog.forEach(a=>{ if(a.date.slice(0,7)===monthKey(calActivityYear,calActivityMonth)) hasActivity[a.date]=true; });
+  for(let d=1; d<=daysInMonth; d++){
+    const dateStr=calActivityYear+'-'+pad(calActivityMonth+1)+'-'+pad(d);
+    const isToday = now.getFullYear()===calActivityYear && now.getMonth()===calActivityMonth && now.getDate()===d;
+    const isSel = calActivitySelectedDate===dateStr;
+    html+=`<div class="cal-day ${isToday?'today':''} ${isSel?'selected':''}" data-date="${dateStr}"><span class="dnum">${d}</span>${hasActivity[dateStr]?'<span class="ddot"></span>':''}</div>`;
+  }
+  const grid=document.getElementById('calActivityGrid');
+  grid.innerHTML=html;
+  grid.querySelectorAll('.cal-day[data-date]').forEach(el=>{
+    el.addEventListener('click', ()=>{ calActivitySelectedDate=el.dataset.date; renderCalActivity(); renderActivityDayList(); });
+  });
+}
+function renderActivityDayList(){
+  const list=document.getElementById('activityList');
+  document.getElementById('activityDayLabel').textContent = calActivitySelectedDate ? fmtDate(calActivitySelectedDate) : 'Hoy';
+  const rows = DATA.activityLog.filter(a=>a.date===calActivitySelectedDate).sort((a,b)=>b.time.localeCompare(a.time));
+  list.innerHTML = rows.length ? rows.map(a=>`<div class="activity-row"><span class="activity-time">${a.time}</span><span class="activity-dot"></span><span>${esc(a.text)}</span></div>`).join('') : '<p style="font-size:12.5px; color:var(--ink-soft);">Sin movimientos ese día.</p>';
+}
+
 function openModal(id){ document.getElementById(id).classList.add('open'); }
 function closeModal(id){ document.getElementById(id).classList.remove('open'); }
 
@@ -1052,27 +1148,9 @@ function cleanOrphans(){
   if(changed) saveData(DATA);
   return changed;
 }
-function cleanOrphansManual(){
-  const changed = cleanOrphans();
-  closeModal('modalReset');
-  showToast(changed ? 'Registros huérfanos corregidos' : 'No se encontraron registros huérfanos');
-  renderAll();
-}
-function openResetModal(){ openModal('modalReset'); }
-async function resetAllData(){
-  const ok = await showConfirm('Esto borrará residentes, personal, finanzas, inventario y comunicaciones. Podrás deshacerlo con Ctrl+Z justo después si te arrepientes. ¿Continuar?', 'Borrar todos los datos');
-  if(!ok) return;
-  pushUndoSnapshot();
-  DATA = emptyData();
-  DATA.gastoCategories = defaultGastoCategories();
-  saveData(DATA);
-  closeModal('modalReset');
-  showToast('Sistema restablecido — empezando desde cero');
-  renderAll();
-}
 
 /* ---------- NAVEGACIÓN ---------- */
-const VIEW_TITLES={dashboard:'Dashboard', residentes:'Registro de residentes', salud:'Salud y cuidado', finanzas:'Gestión financiera', inventario:'Inventario', rrhh:'Recursos humanos', comunicaciones:'Comunicaciones'};
+const VIEW_TITLES={dashboard:'Dashboard', residentes:'Registro de residentes', salud:'Salud y cuidado', finanzas:'Gestión financiera', inventario:'Inventario', rrhh:'Recursos humanos', comunicaciones:'Resumen de residentes'};
 function switchView(view){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.getElementById('view-'+view).classList.add('active');
@@ -1116,11 +1194,6 @@ document.getElementById('rrhhSubtabs').addEventListener('click', e=>{
   document.querySelectorAll('#rrhhSubtabs button').forEach(x=>x.classList.remove('active')); b.classList.add('active');
   activateSubview('rrhh', b.dataset.rrhhtab); renderRRHHAll();
 });
-document.getElementById('comSubtabs').addEventListener('click', e=>{
-  const b=e.target.closest('button[data-comtab]'); if(!b) return;
-  document.querySelectorAll('#comSubtabs button').forEach(x=>x.classList.remove('active')); b.classList.add('active');
-  activateSubview('com', b.dataset.comtab); renderComunicaciones();
-});
 
 /* ============ RESIDENTES ============ */
 function familyRowHTML(f, idx){
@@ -1143,6 +1216,69 @@ function collectFamilyMembers(){
     phone: row.querySelector('.fam-phone').value.trim()
   })).filter(f=>f.name);
 }
+
+/* ---- Edad automática ---- */
+function calcAge(birthISO){
+  if(!birthISO) return '';
+  const b=new Date(birthISO+'T00:00:00'); const now=new Date();
+  let age=now.getFullYear()-b.getFullYear();
+  const m=now.getMonth()-b.getMonth();
+  if(m<0 || (m===0 && now.getDate()<b.getDate())) age--;
+  return age>=0 ? age+' años' : '';
+}
+function updateResidentAge(){
+  document.getElementById('rEdad').value = calcAge(document.getElementById('rBirth').value);
+}
+
+/* ---- Historial clínico (celdas dinámicas, Enter agrega una nueva) ---- */
+function historialCellHTML(value){
+  return `<input type="text" class="historial-cell" value="${esc(value||'')}" placeholder="Escribe una entrada del historial…">`;
+}
+function addHistorialCell(value, focus){
+  const list=document.getElementById('historialClinicoList');
+  const wrap=document.createElement('div');
+  wrap.innerHTML=historialCellHTML(value);
+  const input=wrap.firstElementChild;
+  wireHistorialCell(input);
+  list.appendChild(input);
+  if(focus) input.focus();
+  return input;
+}
+function wireHistorialCell(input){
+  input.addEventListener('keydown', e=>{
+    if(e.key==='Enter'){
+      e.preventDefault();
+      const list=document.getElementById('historialClinicoList');
+      const cells=Array.from(list.querySelectorAll('.historial-cell'));
+      const idx=cells.indexOf(input);
+      if(idx===cells.length-1){ addHistorialCell('', true); }
+      else { cells[idx+1].focus(); }
+    }
+  });
+}
+function collectHistorialClinico(){
+  return Array.from(document.querySelectorAll('#historialClinicoList .historial-cell')).map(i=>i.value.trim()).filter(v=>v);
+}
+
+let residentOtherFilesDraft = [];
+function renderOtherFilesPreview(){
+  const otherPreview=document.getElementById('rOtherFilesPreview');
+  otherPreview.innerHTML = residentOtherFilesDraft.length ? residentOtherFilesDraft.map((f,i)=>`
+    <span class="filechip" style="gap:8px;">
+      <a href="${f.data}" target="_blank" style="color:inherit; text-decoration:none;">📎 ${esc(f.name)}</a>
+      <button type="button" onclick="removeOtherFileDraft(${i})" style="all:unset; cursor:pointer; color:var(--warn); font-weight:700;">✕</button>
+    </span>`).join('') : '<span style="font-size:12px; color:var(--ink-soft);">Sin archivos adicionales.</span>';
+}
+function removeOtherFileDraft(idx){ residentOtherFilesDraft.splice(idx,1); renderOtherFilesPreview(); }
+document.getElementById('rOtherFiles').addEventListener('change', async function(){
+  if(this.files.length){
+    const newOnes = await Promise.all(Array.from(this.files).map(async f=>({name:f.name, data: await fileToDataURL(f)})));
+    residentOtherFilesDraft = residentOtherFilesDraft.concat(newOnes);
+    this.value='';
+    renderOtherFilesPreview();
+  }
+});
+
 async function openResidentModal(id){
   document.getElementById('residentModalTitle').textContent = id ? 'Editar residente' : 'Nuevo residente';
   document.getElementById('residentId').value = id || '';
@@ -1150,7 +1286,10 @@ async function openResidentModal(id){
   document.getElementById('rName').value = r?r.name:'';
   document.getElementById('rDni').value = r?r.dni:'';
   document.getElementById('rBirth').value = r?r.birth:'';
-  document.getElementById('rRoom').value = r?r.room:'';
+  updateResidentAge();
+  document.getElementById('rDependencia').value = r?(r.dependencia||'2'):'2';
+  document.getElementById('rPeso').value = r?r.peso||'':'';
+  document.getElementById('rAltura').value = r?r.altura||'':'';
   document.getElementById('rStatus').value = r?r.status:'Activo';
   document.getElementById('rContractDate').value = r?r.contractDate:todayISO();
   document.getElementById('rAdmission').value = r?r.admission:todayISO();
@@ -1158,20 +1297,30 @@ async function openResidentModal(id){
   document.getElementById('rEmergencyName').value = r?r.emergencyName:'';
   document.getElementById('rEmergencyRelation').value = r?r.emergencyRelation:'';
   document.getElementById('rEmergencyPhone').value = r?r.emergencyPhone:'';
+  document.getElementById('rEmergencyAddress').value = r?(r.emergencyAddress||''):'';
   document.getElementById('rCareLevel').value = r?r.careLevel:'Básico';
-  document.getElementById('rDoctor').value = r?r.doctor:'';
-  document.getElementById('rAllergies').value = r?r.allergies:'';
+  document.getElementById('rProfRole').value = r?(r.profRole||''):'';
+  document.getElementById('rProfName').value = r?(r.profName||''):'';
   document.getElementById('rContractFile').value='';
+  document.getElementById('rOtherFiles').value='';
+  document.getElementById('rEmergencyFile').value='';
+  residentOtherFilesDraft = (r && r.otherFiles) ? [...r.otherFiles] : [];
+  renderOtherFilesPreview();
   const preview=document.getElementById('rContractFilePreview');
   preview.innerHTML = (r && r.contractFile) ? `<a class="filechip" href="${r.contractFile}" target="_blank">📎 ${esc(r.contractFileName||'Ver contrato archivado')}</a>` : '<span style="font-size:12px; color:var(--ink-soft);">Sin archivo adjunto todavía.</span>';
+  const emgPreview=document.getElementById('rEmergencyFilePreview');
+  emgPreview.innerHTML = (r && r.emergencyFile) ? `<a class="filechip" href="${r.emergencyFile}" target="_blank">📎 ${esc(r.emergencyFileName||'Ver archivo')}</a>` : '<span style="font-size:12px; color:var(--ink-soft);">Sin archivo adjunto.</span>';
   const famList=document.getElementById('familyMembersList');
   famList.innerHTML='';
   const fams = (r && r.family && r.family.length) ? r.family : [{}];
   fams.forEach(f=>addFamilyRow(f));
+  const histList=document.getElementById('historialClinicoList');
+  histList.innerHTML='';
+  const hist = (r && r.clinicalHistory && r.clinicalHistory.length) ? r.clinicalHistory : [''];
+  hist.forEach(h=>addHistorialCell(h, false));
   openModal('modalResident');
 }
 async function saveResident(){
-  pushUndoSnapshot();
   const name=document.getElementById('rName').value.trim();
   if(!name){ showToast('El nombre es obligatorio'); return; }
   const id=document.getElementById('residentId').value;
@@ -1179,33 +1328,43 @@ async function saveResident(){
   let contractFile = existing ? existing.contractFile : null;
   let contractFileName = existing ? existing.contractFileName : null;
   const fileInput=document.getElementById('rContractFile');
-  if(fileInput.files[0]){
-    contractFile = await fileToDataURL(fileInput.files[0]);
-    contractFileName = fileInput.files[0].name;
-  }
+  if(fileInput.files[0]){ contractFile = await fileToDataURL(fileInput.files[0]); contractFileName = fileInput.files[0].name; }
+
+  const otherFiles = residentOtherFilesDraft;
+
+  let emergencyFile = existing ? existing.emergencyFile : null;
+  let emergencyFileName = existing ? existing.emergencyFileName : null;
+  const emgInput=document.getElementById('rEmergencyFile');
+  if(emgInput.files[0]){ emergencyFile = await fileToDataURL(emgInput.files[0]); emergencyFileName = emgInput.files[0].name; }
+
   const obj = {
     id: id||uid(), name, dni:document.getElementById('rDni').value.trim(), birth:document.getElementById('rBirth').value,
-    room:document.getElementById('rRoom').value.trim(), status:document.getElementById('rStatus').value,
+    dependencia:document.getElementById('rDependencia').value, peso:Number(document.getElementById('rPeso').value)||null, altura:Number(document.getElementById('rAltura').value)||null,
+    status:document.getElementById('rStatus').value,
     contractDate:document.getElementById('rContractDate').value, admission:document.getElementById('rAdmission').value,
-    planAmount:Number(document.getElementById('rPlanAmount').value)||0, contractFile, contractFileName,
+    planAmount:Number(document.getElementById('rPlanAmount').value)||0, contractFile, contractFileName, otherFiles,
     emergencyName:document.getElementById('rEmergencyName').value.trim(), emergencyRelation:document.getElementById('rEmergencyRelation').value.trim(),
-    emergencyPhone:document.getElementById('rEmergencyPhone').value.trim(), family:collectFamilyMembers(),
-    careLevel:document.getElementById('rCareLevel').value, doctor:document.getElementById('rDoctor').value.trim(), allergies:document.getElementById('rAllergies').value.trim(),
-    medications: existing ? existing.medications : [], schedule: existing ? existing.schedule : [], evolution: existing ? existing.evolution : [], recommendations: existing? existing.recommendations : ''
+    emergencyPhone:document.getElementById('rEmergencyPhone').value.trim(), emergencyAddress:document.getElementById('rEmergencyAddress').value.trim(),
+    emergencyFile, emergencyFileName, family:collectFamilyMembers(),
+    careLevel:document.getElementById('rCareLevel').value, profRole:document.getElementById('rProfRole').value, profName:document.getElementById('rProfName').value.trim(),
+    clinicalHistory: collectHistorialClinico(),
+    healthLogs: existing ? (existing.healthLogs||[]) : [], recommendations: existing? existing.recommendations : ''
   };
+  const isNew = !id;
   if(id){ DATA.residents = DATA.residents.map(r=>r.id===id?obj:r); }
   else{ DATA.residents.push(obj); }
+  logActivity((isNew?'Se registró al residente ':'Se editó el registro de ')+name);
   saveData(DATA); closeModal('modalResident'); showToast('Residente guardado'); renderAll();
 }
 async function deleteResident(id){
   const r = DATA.residents.find(x=>x.id===id);
   const ok = await showConfirm('¿Eliminar a '+(r?r.name:'este residente')+'? También se eliminarán sus cuotas, contactos familiares y notas de salud asociadas.', 'Eliminar residente');
   if(!ok) return;
-  pushUndoSnapshot();
   DATA.residents = DATA.residents.filter(r=>r.id!==id);
   DATA.cuotas = DATA.cuotas.filter(c=>c.residentId!==id);
   DATA.familyLogs = DATA.familyLogs.filter(f=>f.residentId!==id);
   DATA.invMovements.forEach(m=>{ if(m.residentId===id) m.residentId=''; });
+  logActivity('Se eliminó al residente '+(r?r.name:''));
   saveData(DATA); showToast('Residente eliminado'); renderAll();
 }
 function renderResidents(){
@@ -1213,13 +1372,13 @@ function renderResidents(){
   const filter=document.getElementById('residentFilter')?.value||'';
   const body=document.getElementById('residentTableBody');
   const rows=DATA.residents.filter(r=>
-    (!search || r.name.toLowerCase().includes(search) || (r.dni||'').includes(search) || (r.room||'').toLowerCase().includes(search)) &&
+    (!search || r.name.toLowerCase().includes(search) || (r.dni||'').includes(search)) &&
     (!filter || r.status===filter)
   );
   body.innerHTML = rows.map(r=>`
     <tr>
-      <td><strong>${esc(r.name)}</strong><br><span style="color:var(--ink-soft); font-size:12px;">DNI ${esc(r.dni||'—')}</span></td>
-      <td>${esc(r.room||'—')}</td>
+      <td><strong>${esc(r.name)}</strong><br><span style="color:var(--ink-soft); font-size:12px;">DNI ${esc(r.dni||'—')} · ${esc(calcAge(r.birth)||'—')}</span></td>
+      <td>Grado ${esc(r.dependencia||'—')}</td>
       <td>${fmtDate(r.admission)}</td>
       <td style="font-family:var(--mono);">${fmt(r.planAmount)}</td>
       <td>${r.contractFile?`<a class="filechip" href="${r.contractFile}" target="_blank">📎 Ver</a>`:'<span class="pill pill-muted">Sin archivo</span>'}</td>
@@ -1232,10 +1391,10 @@ function renderResidents(){
   document.getElementById('residentEmpty').style.display = rows.length?'none':'block';
 }
 
-/* ============ SALUD Y CUIDADO ============ */
+/* ============ SALUD Y CUIDADO (registro diario) ============ */
 function medRowHTML(m){
   return `<div class="field-row3 med-row">
-    <input type="text" class="med-name" placeholder="Medicamento" value="${esc(m?.name||'')}">
+    <input type="text" class="med-name" placeholder="Indicación (ej. Metformina)" value="${esc(m?.name||'')}">
     <input type="text" class="med-dose" placeholder="Dosis (ej. 500mg)" value="${esc(m?.dose||'')}">
     <div style="display:flex; gap:6px; align-items:center;">
       <input type="text" class="med-freq" placeholder="Frecuencia" value="${esc(m?.freq||'')}" style="flex:1;">
@@ -1254,7 +1413,7 @@ function collectMeds(){
 function scheduleRowHTML(s){
   return `<div class="field-row schedule-row">
     <input type="time" class="sched-time" value="${esc(s?.time||'')}">
-    <div style="display:flex; gap:6px;"><input type="text" class="sched-activity" placeholder="Actividad (ej. Desayuno, Baño…)" value="${esc(s?.activity||'')}" style="flex:1;"><button type="button" class="btn btn-danger btn-sm btn-icon" onclick="this.closest('.schedule-row').remove()">✕</button></div>
+    <div style="display:flex; gap:6px;"><input type="text" class="sched-activity" placeholder="Comida (ej. Desayuno: avena con fruta)" value="${esc(s?.activity||'')}" style="flex:1;"><button type="button" class="btn btn-danger btn-sm btn-icon" onclick="this.closest('.schedule-row').remove()">✕</button></div>
   </div>`;
 }
 function addScheduleRow(s){ const list=document.getElementById('scheduleList'); const d=document.createElement('div'); d.innerHTML=scheduleRowHTML(s); list.appendChild(d.firstElementChild); }
@@ -1263,82 +1422,123 @@ function collectSchedule(){
     time: row.querySelector('.sched-time').value, activity: row.querySelector('.sched-activity').value.trim()
   })).filter(s=>s.activity).sort((a,b)=>(a.time||'').localeCompare(b.time||''));
 }
+
 let currentSaludResident=null;
-function renderEvolutionLog(){
-  const r=currentSaludResident;
-  const log=document.getElementById('evolutionLog');
-  const items=[...(r.evolution||[])].sort((a,b)=>b.date.localeCompare(a.date));
-  log.innerHTML = items.length ? items.map((e,i)=>`<div style="display:flex; justify-content:space-between; gap:10px; font-size:12.5px; padding:8px 0; border-bottom:1px dashed var(--line);"><span><strong style="font-family:var(--mono); color:var(--teal-deep);">${fmtDate(e.date)}</strong> — ${esc(e.note)}</span><button type="button" class="btn btn-danger btn-sm btn-icon" onclick="removeEvolutionNote(${i})">✕</button></div>`).join('') : '<p style="font-size:12.5px; color:var(--ink-soft);">Sin notas registradas.</p>';
-}
-function addEvolutionNote(){
-  const date=document.getElementById('evoDate').value || todayISO();
-  const note=document.getElementById('evoNote').value.trim();
-  if(!note){ showToast('Escribe una nota'); return; }
-  currentSaludResident.evolution = currentSaludResident.evolution || [];
-  currentSaludResident.evolution.push({date, note});
-  document.getElementById('evoNote').value='';
-  renderEvolutionLog();
-}
-function removeEvolutionNote(idx){
-  const items=[...(currentSaludResident.evolution||[])].sort((a,b)=>b.date.localeCompare(a.date));
-  const target=items[idx];
-  currentSaludResident.evolution = currentSaludResident.evolution.filter(e=>e!==target);
-  renderEvolutionLog();
+let saludSelectedDate=null;
+let calSaludYear, calSaludMonth;
+
+function getHealthLog(r, date){ return (r.healthLogs||[]).find(h=>h.date===date); }
+function latestHealthLogBefore(r, date){
+  const logs=(r.healthLogs||[]).filter(h=>h.date<date).sort((a,b)=>b.date.localeCompare(a.date));
+  return logs[0]||null;
 }
 function openSaludModal(id){
   const r=DATA.residents.find(x=>x.id===id);
   if(!r) return;
   currentSaludResident=r;
+  saludSelectedDate=todayISO();
   document.getElementById('saludModalTitle').textContent='Salud y cuidado — '+r.name;
   document.getElementById('saludResidentId').value=r.id;
-  document.getElementById('sCareLevel').value=r.careLevel||'Básico';
-  document.getElementById('sDoctor').value=r.doctor||'';
-  document.getElementById('sAllergies').value=r.allergies||'';
-  document.getElementById('sRecommendations').value=r.recommendations||'';
-  document.getElementById('medsList').innerHTML='';
-  (r.medications&&r.medications.length?r.medications:[]).forEach(m=>addMedRow(m));
-  document.getElementById('scheduleList').innerHTML='';
-  (r.schedule&&r.schedule.length?r.schedule:[]).forEach(s=>addScheduleRow(s));
-  document.getElementById('evoDate').value=todayISO();
-  document.getElementById('evoNote').value='';
-  renderEvolutionLog();
+  document.getElementById('saludCalendarWrap').style.display='none';
+  const now=new Date(); calSaludYear=now.getFullYear(); calSaludMonth=now.getMonth();
+  loadSaludDay();
   openModal('modalSalud');
 }
-function saveSalud(){
-  pushUndoSnapshot();
+function saludGoToday(){ saludSelectedDate=todayISO(); loadSaludDay(); renderCalSalud(); }
+function toggleSaludCalendar(){
+  const el=document.getElementById('saludCalendarWrap');
+  const show = el.style.display==='none';
+  el.style.display = show ? 'block' : 'none';
+  if(show) renderCalSalud();
+}
+function calSaludPrev(){ calSaludMonth--; if(calSaludMonth<0){calSaludMonth=11; calSaludYear--;} renderCalSalud(); }
+function calSaludNext(){ calSaludMonth++; if(calSaludMonth>11){calSaludMonth=0; calSaludYear++;} renderCalSalud(); }
+function renderCalSalud(){
+  document.getElementById('calSaludLabel').textContent = MONTH_SHORT[calSaludMonth]+' '+calSaludYear;
+  const daysInMonth=new Date(calSaludYear,calSaludMonth+1,0).getDate();
+  const firstDow=new Date(calSaludYear,calSaludMonth,1).getDay();
+  const DOW=['D','L','M','M','J','V','S'];
+  let html=DOW.map(d=>`<div class="cal-dow">${d}</div>`).join('');
+  for(let i=0;i<firstDow;i++) html+='<div class="cal-day empty"></div>';
+  const now=new Date();
   const r=currentSaludResident;
-  r.careLevel=document.getElementById('sCareLevel').value;
-  r.doctor=document.getElementById('sDoctor').value.trim();
-  r.allergies=document.getElementById('sAllergies').value.trim();
-  r.recommendations=document.getElementById('sRecommendations').value.trim();
-  r.medications=collectMeds();
-  r.schedule=collectSchedule();
+  const hasLog={};
+  (r.healthLogs||[]).forEach(h=>{ if(h.date.slice(0,7)===monthKey(calSaludYear,calSaludMonth)) hasLog[h.date]=true; });
+  for(let d=1; d<=daysInMonth; d++){
+    const dateStr=calSaludYear+'-'+pad(calSaludMonth+1)+'-'+pad(d);
+    const isToday = now.getFullYear()===calSaludYear && now.getMonth()===calSaludMonth && now.getDate()===d;
+    const isSel = saludSelectedDate===dateStr;
+    html+=`<div class="cal-day ${isToday?'today':''} ${isSel?'selected':''}" data-date="${dateStr}"><span class="dnum">${d}</span>${hasLog[dateStr]?'<span class="ddot"></span>':''}</div>`;
+  }
+  const grid=document.getElementById('calSaludGrid');
+  grid.innerHTML=html;
+  grid.querySelectorAll('.cal-day[data-date]').forEach(el=>{
+    el.addEventListener('click', ()=>{ saludSelectedDate=el.dataset.date; loadSaludDay(); renderCalSalud(); });
+  });
+}
+function loadSaludDay(){
+  const r=currentSaludResident;
+  const isToday = saludSelectedDate===todayISO();
+  document.getElementById('saludSelectedDateLabel').textContent = fmtDate(saludSelectedDate) + (isToday?' (hoy)':'');
+  let log = getHealthLog(r, saludSelectedDate);
+  if(!log && isToday){
+    const prev = latestHealthLogBefore(r, saludSelectedDate);
+    log = prev ? {...prev, date:saludSelectedDate, evolutionNote:''} : {date:saludSelectedDate, careLevel:r.careLevel||'Básico', peso:r.peso||'', indicaciones:[], dieta:[], recomendaciones:'', evolutionNote:''};
+  }
+  if(!log) log = {date:saludSelectedDate, careLevel:r.careLevel||'Básico', peso:'', indicaciones:[], dieta:[], recomendaciones:'', evolutionNote:''};
+  document.getElementById('sCareLevel').value = log.careLevel||'Básico';
+  document.getElementById('sPeso').value = log.peso||'';
+  document.getElementById('sEvolution').value = log.evolutionNote||'';
+  document.getElementById('sRecommendations').value = log.recomendaciones||'';
+  document.getElementById('medsList').innerHTML='';
+  (log.indicaciones||[]).forEach(m=>addMedRow(m));
+  document.getElementById('scheduleList').innerHTML='';
+  (log.dieta||[]).forEach(s=>addScheduleRow(s));
+}
+function saveSalud(){
+  const r=currentSaludResident;
+  const log = {
+    date: saludSelectedDate,
+    careLevel: document.getElementById('sCareLevel').value,
+    peso: Number(document.getElementById('sPeso').value)||null,
+    evolutionNote: document.getElementById('sEvolution').value.trim(),
+    recomendaciones: document.getElementById('sRecommendations').value.trim(),
+    indicaciones: collectMeds(),
+    dieta: collectSchedule()
+  };
+  r.healthLogs = r.healthLogs || [];
+  const idx = r.healthLogs.findIndex(h=>h.date===saludSelectedDate);
+  if(idx>=0) r.healthLogs[idx]=log; else r.healthLogs.push(log);
+  if(saludSelectedDate===todayISO()){ r.careLevel = log.careLevel; if(log.peso) r.peso = log.peso; }
   DATA.residents = DATA.residents.map(x=>x.id===r.id?r:x);
-  saveData(DATA); closeModal('modalSalud'); showToast('Ficha de salud actualizada'); renderAll();
+  logActivity('Se guardó el registro de salud de '+r.name+' del '+fmtDate(saludSelectedDate));
+  saveData(DATA); showToast('Registro guardado — '+fmtDate(saludSelectedDate)); renderAll();
 }
 function renderSalud(){
   const search=(document.getElementById('saludSearch')?.value||'').toLowerCase();
   const list=document.getElementById('saludList');
   const rows=DATA.residents.filter(r=>!search || r.name.toLowerCase().includes(search));
   list.innerHTML = rows.map(r=>{
-    const meds=(r.medications||[]).filter(m=>m.name);
-    const nextActs=(r.schedule||[]).slice(0,3);
+    const todayLog = getHealthLog(r, todayISO()) || latestHealthLogBefore(r, todayISO()+'~');
+    const meds=(todayLog?.indicaciones||[]).filter(m=>m.name);
+    const dieta=(todayLog?.dieta||[]).slice(0,3);
+    const prof = [r.profRole, r.profName].filter(Boolean).join(' — ');
     return `<div class="card">
       <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:14px; flex-wrap:wrap;">
         <div>
           <h3 style="font-size:16px; margin-bottom:4px;">${esc(r.name)} <span class="pill pill-teal" style="margin-left:6px;">${esc(r.careLevel||'—')}</span></h3>
-          <p style="font-size:12.5px; color:var(--ink-soft);">Hab. ${esc(r.room||'—')} · Médico: ${esc(r.doctor||'—')} · Alergias: ${esc(r.allergies||'Ninguna registrada')}</p>
+          <p style="font-size:12.5px; color:var(--ink-soft);">Grado ${esc(r.dependencia||'—')} · ${esc(calcAge(r.birth)||'—')} · ${esc(prof||'Sin profesional asignado')}${todayLog?.peso?' · '+todayLog.peso+' kg':''}</p>
         </div>
-        <button class="btn btn-primary btn-sm" onclick="openSaludModal('${r.id}')">Editar ficha de salud</button>
+        <button class="btn btn-primary btn-sm" onclick="openSaludModal('${r.id}')">Registro de hoy</button>
       </div>
       <div class="grid-2" style="margin-top:14px;">
         <div>
-          <p style="font-size:11.5px; font-weight:600; color:var(--teal-deep); margin-bottom:6px;">MEDICAMENTOS</p>
-          ${meds.length ? meds.map(m=>`<div style="font-size:12.5px; padding:4px 0;">${m.required?'🔴':'⚪'} <strong>${esc(m.name)}</strong> ${esc(m.dose)} — ${esc(m.freq)}</div>`).join('') : '<p style="font-size:12px; color:var(--ink-soft);">Sin medicamentos registrados.</p>'}
+          <p style="font-size:11.5px; font-weight:600; color:var(--teal-deep); margin-bottom:6px;">INDICACIONES MÉDICAS</p>
+          ${meds.length ? meds.map(m=>`<div style="font-size:12.5px; padding:4px 0;">${m.required?'🔴':'⚪'} <strong>${esc(m.name)}</strong> ${esc(m.dose)} — ${esc(m.freq)}</div>`).join('') : '<p style="font-size:12px; color:var(--ink-soft);">Sin indicaciones registradas hoy.</p>'}
         </div>
         <div>
-          <p style="font-size:11.5px; font-weight:600; color:var(--teal-deep); margin-bottom:6px;">CRONOGRAMA (próximas actividades)</p>
-          ${nextActs.length ? nextActs.map(s=>`<div style="font-size:12.5px; padding:4px 0;"><span style="font-family:var(--mono); color:var(--navy);">${esc(s.time)}</span> — ${esc(s.activity)}</div>`).join('') : '<p style="font-size:12px; color:var(--ink-soft);">Sin cronograma definido.</p>'}
+          <p style="font-size:11.5px; font-weight:600; color:var(--teal-deep); margin-bottom:6px;">DIETA DE HOY</p>
+          ${dieta.length ? dieta.map(s=>`<div style="font-size:12.5px; padding:4px 0;"><span style="font-family:var(--mono); color:var(--navy);">${esc(s.time)}</span> — ${esc(s.activity)}</div>`).join('') : '<p style="font-size:12px; color:var(--ink-soft);">Sin dieta registrada hoy.</p>'}
         </div>
       </div>
     </div>`;
@@ -1391,7 +1591,6 @@ async function undoLastPago(cuotaId){
   if(!c || c.payments.length===0){ showToast('No hay pagos que deshacer'); return; }
   const ok = await showConfirm('¿Deshacer el último pago registrado para esta cuota?', 'Deshacer pago');
   if(!ok) return;
-  pushUndoSnapshot();
   const last=c.payments.pop();
   c.amountPaid = Math.max(0, c.amountPaid - last.amount);
   c.status = cuotaStatusFrom(c.amountDue, c.amountPaid);
@@ -1406,7 +1605,6 @@ async function savePago(){
   let fileData=null, fileName=null;
   const fi=document.getElementById('pagoFile');
   if(fi.files[0]){ fileData=await fileToDataURL(fi.files[0]); fileName=fi.files[0].name; }
-  pushUndoSnapshot();
   const editMode = document.getElementById('pagoEditMode').value==='1';
   if(editMode && c.payments.length>0){
     const last=c.payments[c.payments.length-1];
@@ -1418,6 +1616,8 @@ async function savePago(){
     c.amountPaid += monto;
   }
   c.status = cuotaStatusFrom(c.amountDue, c.amountPaid);
+  const rr=DATA.residents.find(x=>x.id===c.residentId);
+  logActivity('Pago de cuota registrado — '+(rr?rr.name:'')+' ('+fmt(monto)+')');
   saveData(DATA); closeModal('modalPago'); showToast(editMode?'Pago actualizado':'Pago registrado'); renderAll();
 }
 function renderCuotas(){
@@ -1475,7 +1675,6 @@ function toggleNewCatRow(){
   if(!showing) document.getElementById('newCatName').focus();
 }
 function addGastoCategory(){
-  pushUndoSnapshot();
   const name=document.getElementById('newCatName').value.trim();
   if(!name){ showToast('Escribe un nombre para la categoría'); return; }
   if(DATA.gastoCategories.some(c=>c.name.toLowerCase()===name.toLowerCase())){ showToast('Ya existe esa categoría'); return; }
@@ -1524,7 +1723,6 @@ function editGastoInline(id){
 }
 function cancelGastoEdit(){ resetGastoForm(false); }
 async function saveGastoInline(){
-  pushUndoSnapshot();
   const desc=document.getElementById('gastoDesc').value.trim();
   const monto=Number(document.getElementById('gastoMonto').value);
   if(!desc||!monto||monto<=0){ showToast('Completa descripción y un monto válido'); return; }
@@ -1534,8 +1732,8 @@ async function saveGastoInline(){
   const fi=document.getElementById('gastoFile');
   if(fi.files[0]){ fileData=await fileToDataURL(fi.files[0]); fileName=fi.files[0].name; }
   const obj={id:id||uid(), category:document.getElementById('gastoCategory').value, description:desc, amount:monto, date:document.getElementById('gastoFecha').value||todayISO(), fileData, fileName, createdAt: existing?existing.createdAt:Date.now()};
-  if(id){ DATA.gastos = DATA.gastos.map(g=>g.id===id?obj:g); showToast('Gasto actualizado'); }
-  else { DATA.gastos.push(obj); showToast('Gasto agregado'); }
+  if(id){ DATA.gastos = DATA.gastos.map(g=>g.id===id?obj:g); showToast('Gasto actualizado'); logActivity('Se editó el gasto: '+desc+' ('+fmt(monto)+')'); }
+  else { DATA.gastos.push(obj); showToast('Gasto agregado'); logActivity('Se registró un gasto: '+desc+' ('+fmt(monto)+')'); }
   saveData(DATA);
   resetGastoForm(true); // mantiene categoría y fecha para seguir cargando la compra de la semana
   renderAll();
@@ -1543,7 +1741,6 @@ async function saveGastoInline(){
 async function deleteGasto(id){
   const ok = await showConfirm('¿Eliminar este gasto?', 'Eliminar gasto');
   if(!ok) return;
-  pushUndoSnapshot();
   DATA.gastos = DATA.gastos.filter(g=>g.id!==id);
   if(editingGastoId===id) resetGastoForm(false);
   saveData(DATA); showToast('Gasto eliminado'); renderAll();
@@ -1689,7 +1886,6 @@ function openInventoryModal(id){
   openModal('modalInv');
 }
 function saveInventory(){
-  pushUndoSnapshot();
   const name=document.getElementById('invName').value.trim();
   if(!name){ showToast('El nombre es obligatorio'); return; }
   const id=document.getElementById('invId').value;
@@ -1700,7 +1896,6 @@ function saveInventory(){
 async function deleteInventory(id){
   const ok = await showConfirm('¿Eliminar este ítem del inventario?', 'Eliminar ítem');
   if(!ok) return;
-  pushUndoSnapshot();
   DATA.inventory = DATA.inventory.filter(i=>i.id!==id);
   saveData(DATA); showToast('Ítem eliminado'); renderAll();
 }
@@ -1734,7 +1929,6 @@ function openMovModal(type){
   openModal('modalMov');
 }
 async function saveMov(){
-  pushUndoSnapshot();
   const type=document.getElementById('movType').value;
   const itemId=document.getElementById('movItem').value;
   const qty=Number(document.getElementById('movQty').value);
@@ -1743,12 +1937,12 @@ async function saveMov(){
   if(type==='salida' && qty>item.qty){ const ok=await showConfirm('La cantidad supera el stock actual ('+item.qty+'). ¿Registrar de todas formas?', 'Stock insuficiente'); if(!ok) return; }
   item.qty += (type==='entrada' ? qty : -qty);
   DATA.invMovements.push({id:uid(), itemId, type, qty, date:document.getElementById('movFecha').value||todayISO(), note:document.getElementById('movNote').value.trim(), residentId:type==='salida'?document.getElementById('movResident').value:''});
+  logActivity((type==='entrada'?'Entrada de inventario: ':'Salida de inventario: ')+item.name+' ('+qty+' '+item.unit+')');
   saveData(DATA); closeModal('modalMov'); showToast('Movimiento registrado'); renderAll();
 }
 async function deleteMov(id){
   const ok = await showConfirm('¿Eliminar este movimiento? No se revertirá el stock automáticamente.', 'Eliminar movimiento');
   if(!ok) return;
-  pushUndoSnapshot();
   DATA.invMovements = DATA.invMovements.filter(m=>m.id!==id);
   saveData(DATA); showToast('Movimiento eliminado'); renderAll();
 }
@@ -1779,8 +1973,11 @@ function openStaffModal(id){
   const s = id ? DATA.staff.find(x=>x.id===id) : null;
   document.getElementById('staffName').value=s?s.name:'';
   document.getElementById('staffDni').value=s?s.dni:'';
+  document.getElementById('staffEdad').value=s?(s.edad||''):'';
+  document.getElementById('staffSexo').value=s?(s.sexo||''):'';
   document.getElementById('staffRole').value=s?s.role:'';
-  document.getElementById('staffShift').value=s?s.shift:'Mañana';
+  const shifts = s ? (s.shifts||(s.shift?[s.shift]:[])) : ['Mañana'];
+  document.querySelectorAll('.staff-shift-cb').forEach(cb=>{ cb.checked = shifts.includes(cb.value); });
   document.getElementById('staffPhone').value=s?s.phone:'';
   document.getElementById('staffHireDate').value=s?s.hireDate:todayISO();
   document.getElementById('staffSalary').value=s?s.salary:1200;
@@ -1788,30 +1985,39 @@ function openStaffModal(id){
   openModal('modalStaff');
 }
 function saveStaff(){
-  pushUndoSnapshot();
   const name=document.getElementById('staffName').value.trim();
   if(!name){ showToast('El nombre es obligatorio'); return; }
+  const shifts = Array.from(document.querySelectorAll('.staff-shift-cb:checked')).map(cb=>cb.value);
+  if(shifts.length===0){ showToast('Selecciona al menos un turno'); return; }
   const id=document.getElementById('staffId').value;
-  const obj={id:id||uid(), name, dni:document.getElementById('staffDni').value.trim(), role:document.getElementById('staffRole').value.trim(), shift:document.getElementById('staffShift').value, phone:document.getElementById('staffPhone').value.trim(), hireDate:document.getElementById('staffHireDate').value, salary:Number(document.getElementById('staffSalary').value)||0, status:document.getElementById('staffStatus').value};
+  const obj={
+    id:id||uid(), name, dni:document.getElementById('staffDni').value.trim(),
+    edad:Number(document.getElementById('staffEdad').value)||null, sexo:document.getElementById('staffSexo').value,
+    role:document.getElementById('staffRole').value.trim(), shifts, shift:shifts.join(', '),
+    phone:document.getElementById('staffPhone').value.trim(), hireDate:document.getElementById('staffHireDate').value,
+    salary:Number(document.getElementById('staffSalary').value)||0, status:document.getElementById('staffStatus').value
+  };
+  const isNew=!id;
   if(id){ DATA.staff = DATA.staff.map(s=>s.id===id?obj:s); } else { DATA.staff.push(obj); }
+  logActivity((isNew?'Se registró al empleado ':'Se editó el registro de ')+name);
   saveData(DATA); closeModal('modalStaff'); showToast('Empleado guardado'); renderAll();
 }
 async function deleteStaff(id){
   const s = DATA.staff.find(x=>x.id===id);
   const ok = await showConfirm('¿Eliminar a '+(s?s.name:'este empleado')+'? También se eliminará su historial de pagos.', 'Eliminar empleado');
   if(!ok) return;
-  pushUndoSnapshot();
   DATA.staff = DATA.staff.filter(s=>s.id!==id);
   DATA.staffPayments = DATA.staffPayments.filter(p=>p.staffId!==id);
+  logActivity('Se eliminó al empleado '+(s?s.name:''));
   saveData(DATA); showToast('Empleado eliminado'); renderAll();
 }
 function renderStaffTable(){
   const body=document.getElementById('staffTableBody');
   body.innerHTML = DATA.staff.map(s=>`
     <tr>
-      <td><strong>${esc(s.name)}</strong><br><span style="color:var(--ink-soft); font-size:12px;">${esc(s.phone||'')}</span></td>
+      <td><strong>${esc(s.name)}</strong><br><span style="color:var(--ink-soft); font-size:12px;">${esc(s.phone||'')}${s.edad?' · '+s.edad+' años':''}${s.sexo?' · '+esc(s.sexo):''}</span></td>
       <td>${esc(s.role||'—')}</td>
-      <td>${esc(s.shift)}</td>
+      <td>${esc((s.shifts||[s.shift]).join(', '))}</td>
       <td style="font-family:var(--mono);">${fmt(s.salary)}</td>
       <td><span class="pill ${s.status==='Activo'?'pill-teal':'pill-muted'}">${esc(s.status)}</span></td>
       <td class="row-actions">
@@ -1859,7 +2065,6 @@ async function undoLastPagoStaff(payId){
   if(!p || p.payments.length===0){ showToast('No hay pagos que deshacer'); return; }
   const ok = await showConfirm('¿Deshacer el último pago de sueldo registrado?', 'Deshacer pago');
   if(!ok) return;
-  pushUndoSnapshot();
   const last=p.payments.pop();
   p.amountPaid = Math.max(0, p.amountPaid - last.amount);
   p.status = cuotaStatusFrom(p.amountDue, p.amountPaid);
@@ -1874,7 +2079,6 @@ async function savePagoStaff(){
   let fileData=null, fileName=null;
   const fi=document.getElementById('pagoStaffFile');
   if(fi.files[0]){ fileData=await fileToDataURL(fi.files[0]); fileName=fi.files[0].name; }
-  pushUndoSnapshot();
   const editMode = document.getElementById('pagoStaffEditMode').value==='1';
   if(editMode && p.payments.length>0){
     const last=p.payments[p.payments.length-1];
@@ -1886,6 +2090,8 @@ async function savePagoStaff(){
     p.amountPaid += monto;
   }
   p.status = cuotaStatusFrom(p.amountDue, p.amountPaid);
+  const ss=DATA.staff.find(x=>x.id===p.staffId);
+  logActivity('Pago de sueldo registrado — '+(ss?ss.name:'')+' ('+fmt(monto)+')');
   saveData(DATA); closeModal('modalPagoStaff'); showToast(editMode?'Pago actualizado':'Pago de sueldo registrado'); renderAll();
 }
 function renderStaffPagos(){
@@ -1910,6 +2116,7 @@ function renderStaffPagos(){
       <td><strong>${esc(s?s.name:'—')}</strong></td>
       <td style="font-family:var(--mono);">${fmt(p.amountDue)}</td>
       <td style="font-family:var(--mono);">${fmt(p.amountPaid)}</td>
+      <td>${lastFile?fmtDate(lastFile.date):'<span class="pill pill-muted">—</span>'}</td>
       <td><span class="pill ${statusPill}">${statusLabel}</span></td>
       <td>${lastFile&&lastFile.fileData?`<a class="filechip" href="${lastFile.fileData}" target="_blank">📎 ${esc(lastFile.fileName||'Ver')}</a>`:'<span class="pill pill-muted">—</span>'}</td>
       <td class="row-actions">
@@ -1922,39 +2129,10 @@ function renderStaffPagos(){
 }
 function renderRRHHAll(){ renderStaffTable(); renderStaffPagos(); }
 
-/* ============ COMUNICACIONES ============ */
-function openAnnouncementModal(){
-  document.getElementById('annTitle').value='';
-  document.getElementById('annBody').value='';
-  openModal('modalAnnouncement');
-}
-function saveAnnouncement(){
-  pushUndoSnapshot();
-  const title=document.getElementById('annTitle').value.trim();
-  const body=document.getElementById('annBody').value.trim();
-  if(!title||!body){ showToast('Completa título y mensaje'); return; }
-  DATA.announcements.unshift({id:uid(), title, body, date:todayISO()});
-  saveData(DATA); closeModal('modalAnnouncement'); showToast('Anuncio publicado'); renderAll();
-}
-function deleteAnnouncement(id){
-  pushUndoSnapshot();
-  DATA.announcements = DATA.announcements.filter(a=>a.id!==id);
-  saveData(DATA); renderAll();
-}
-function renderAnnouncements(){
-  const list=document.getElementById('announcementList');
-  list.innerHTML = DATA.announcements.map(a=>`
-    <div class="card">
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
-        <div><h3 style="font-size:15.5px; margin-bottom:4px;">${esc(a.title)}</h3><p style="font-size:13.5px; color:var(--ink-soft);">${esc(a.body)}</p></div>
-        <button class="btn btn-danger btn-sm btn-icon" onclick="deleteAnnouncement('${a.id}')" title="Eliminar">✕</button>
-      </div>
-      <p style="font-family:var(--mono); font-size:11px; color:var(--ink-soft); margin-top:8px;">${fmtDate(a.date)}</p>
-    </div>`).join('');
-  document.getElementById('announcementEmpty').style.display = DATA.announcements.length?'none':'block';
-}
-function openFamilyLogModal(){
+/* ============ RESUMEN DE RESIDENTES (perfil completo) ============ */
+function openFamilyLogModal(residentId){
   document.getElementById('flResident').innerHTML = DATA.residents.map(r=>`<option value="${r.id}">${esc(r.name)}</option>`).join('');
+  if(residentId) document.getElementById('flResident').value=residentId;
   document.getElementById('flFamilyName').value='';
   document.getElementById('flDate').value=todayISO();
   document.getElementById('flMethod').value='Llamada';
@@ -1962,34 +2140,113 @@ function openFamilyLogModal(){
   openModal('modalFamilyLog');
 }
 function saveFamilyLog(){
-  pushUndoSnapshot();
   const residentId=document.getElementById('flResident').value;
   if(!residentId){ showToast('Selecciona un residente'); return; }
   DATA.familyLogs.push({id:uid(), residentId, familyName:document.getElementById('flFamilyName').value.trim(), date:document.getElementById('flDate').value||todayISO(), method:document.getElementById('flMethod').value, note:document.getElementById('flNote').value.trim()});
+  logActivity('Se registró un contacto familiar');
   saveData(DATA); closeModal('modalFamilyLog'); showToast('Contacto registrado'); renderAll();
 }
 function deleteFamilyLog(id){
-  pushUndoSnapshot();
   DATA.familyLogs = DATA.familyLogs.filter(f=>f.id!==id);
-  saveData(DATA); renderAll();
+  saveData(DATA); renderResumenDetail();
 }
-function renderFamilyLogs(){
-  const body=document.getElementById('familyLogTableBody');
-  const rows=[...DATA.familyLogs].sort((a,b)=>b.date.localeCompare(a.date));
-  body.innerHTML = rows.map(f=>{
-    const r=DATA.residents.find(x=>x.id===f.residentId);
-    return `<tr>
-      <td>${fmtDate(f.date)}</td>
-      <td>${esc(r?r.name:'—')}</td>
-      <td>${esc(f.familyName||'—')}</td>
-      <td><span class="pill pill-teal">${esc(f.method)}</span></td>
-      <td>${esc(f.note||'—')}</td>
-      <td class="row-actions"><button class="btn btn-danger btn-sm btn-icon" onclick="deleteFamilyLog('${f.id}')" title="Eliminar">✕</button></td>
-    </tr>`;
-  }).join('');
-  document.getElementById('familyLogEmpty').style.display = rows.length?'none':'block';
+
+let currentResumenId=null;
+function selectResumenResident(id){ currentResumenId=id; renderResumenList(); renderResumenDetail(); }
+function renderResumenList(){
+  const search=(document.getElementById('resumenSearch')?.value||'').toLowerCase();
+  const list=document.getElementById('resumenList');
+  const rows=DATA.residents.filter(r=>!search || r.name.toLowerCase().includes(search));
+  list.innerHTML = rows.map(r=>`
+    <div onclick="selectResumenResident('${r.id}')" style="cursor:pointer; padding:10px 8px; border-radius:5px; ${currentResumenId===r.id?'background:var(--ice);':''} border-bottom:1px solid var(--line);">
+      <strong style="font-size:13.5px;">${esc(r.name)}</strong>
+      <div style="font-size:11.5px; color:var(--ink-soft);"><span class="pill ${r.status==='Activo'?'pill-teal':'pill-muted'}" style="padding:1px 8px;">${esc(r.status)}</span></div>
+    </div>`).join('');
+  document.getElementById('resumenListEmpty').style.display = rows.length?'none':'block';
+  if(currentResumenId && !DATA.residents.some(r=>r.id===currentResumenId)){ currentResumenId=null; renderResumenDetail(); }
 }
-function renderComunicaciones(){ renderAnnouncements(); renderFamilyLogs(); }
+function renderResumenDetail(){
+  const el=document.getElementById('resumenDetail');
+  if(!currentResumenId){ el.innerHTML='<div class="empty-state">Selecciona un residente de la lista para ver su resumen completo: datos, contrato, archivos, familiares, salud y pagos.</div>'; return; }
+  const r=DATA.residents.find(x=>x.id===currentResumenId);
+  if(!r){ el.innerHTML='<div class="empty-state">Este residente ya no existe.</div>'; return; }
+
+  const cuotas=[...DATA.cuotas.filter(c=>c.residentId===r.id)].sort((a,b)=>b.monthKey.localeCompare(a.monthKey));
+  const healthLogs=[...(r.healthLogs||[])].sort((a,b)=>b.date.localeCompare(a.date));
+  const familyContacts=[...DATA.familyLogs.filter(f=>f.residentId===r.id)].sort((a,b)=>b.date.localeCompare(a.date));
+  const prof=[r.profRole, r.profName].filter(Boolean).join(' — ');
+
+  el.innerHTML = `
+    <div class="card" style="margin-bottom:16px;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:14px; flex-wrap:wrap;">
+        <div>
+          <h2 style="font-size:20px; margin-bottom:4px;">${esc(r.name)}</h2>
+          <p style="font-size:12.5px; color:var(--ink-soft);">DNI ${esc(r.dni||'—')} · ${esc(calcAge(r.birth)||'—')} · Grado ${esc(r.dependencia||'—')} · <span class="pill ${r.status==='Activo'?'pill-teal':'pill-muted'}">${esc(r.status)}</span></p>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-ghost btn-sm" onclick="openResidentModal('${r.id}')">Editar registro</button>
+          <button class="btn btn-primary btn-sm" onclick="openSaludModal('${r.id}')">Ir a salud</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2" style="margin-bottom:16px;">
+      <div class="card">
+        <h3 style="font-size:14.5px; color:var(--navy); margin-bottom:10px;">Datos generales</h3>
+        <p style="font-size:13px; line-height:1.9;">
+          Peso: <strong>${r.peso?r.peso+' kg':'—'}</strong><br>
+          Altura: <strong>${r.altura?r.altura+' cm':'—'}</strong><br>
+          Nivel de atención: <strong>${esc(r.careLevel||'—')}</strong><br>
+          Profesional a cargo: <strong>${esc(prof||'Sin asignar')}</strong>
+        </p>
+      </div>
+      <div class="card">
+        <h3 style="font-size:14.5px; color:var(--navy); margin-bottom:10px;">Contrato y archivos</h3>
+        <p style="font-size:13px; line-height:1.9;">
+          Fecha de contrato: <strong>${fmtDate(r.contractDate)}</strong><br>
+          Fecha de ingreso: <strong>${fmtDate(r.admission)}</strong><br>
+          Plan mensual: <strong>${fmt(r.planAmount)}</strong>
+        </p>
+        <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;">
+          ${r.contractFile?`<a class="filechip" href="${r.contractFile}" target="_blank">📎 Contrato</a>`:''}
+          ${(r.otherFiles||[]).map(f=>`<a class="filechip" href="${f.data}" target="_blank">📎 ${esc(f.name)}</a>`).join('')}
+          ${!r.contractFile && !(r.otherFiles||[]).length ? '<span style="font-size:12px; color:var(--ink-soft);">Sin archivos.</span>' : ''}
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px;">
+      <h3 style="font-size:14.5px; color:var(--navy); margin-bottom:10px;">Contacto de emergencia y familiares</h3>
+      <p style="font-size:13px; line-height:1.8;">
+        ${esc(r.emergencyName||'—')} (${esc(r.emergencyRelation||'—')}) · ${esc(r.emergencyPhone||'—')}<br>
+        Dirección: ${esc(r.emergencyAddress||'—')} ${r.emergencyFile?`&nbsp; <a class="filechip" href="${r.emergencyFile}" target="_blank">📎 ${esc(r.emergencyFileName||'Ver archivo')}</a>`:''}
+      </p>
+      ${(r.family||[]).length ? `<div style="margin-top:8px; font-size:12.5px; color:var(--ink-soft);">${r.family.map(f=>`${esc(f.name)} (${esc(f.relation)}) — ${esc(f.phone)}`).join('<br>')}</div>` : ''}
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px; margin-bottom:6px;">
+        <p style="font-size:11.5px; font-weight:600; color:var(--teal-deep);">BITÁCORA DE CONTACTO</p>
+        <button class="btn btn-ghost btn-sm" onclick="openFamilyLogModal('${r.id}')">+ Registrar contacto</button>
+      </div>
+      ${familyContacts.length ? familyContacts.map(f=>`<div style="display:flex; justify-content:space-between; font-size:12.5px; padding:6px 0; border-bottom:1px dashed var(--line);"><span>${fmtDate(f.date)} · ${esc(f.method)} · ${esc(f.familyName||'—')} — ${esc(f.note||'')}</span><button class="btn btn-danger btn-sm btn-icon" onclick="deleteFamilyLog('${f.id}')">✕</button></div>`).join('') : '<p style="font-size:12px; color:var(--ink-soft);">Sin contactos registrados.</p>'}
+    </div>
+
+    <div class="card" style="margin-bottom:16px;">
+      <p style="font-size:11.5px; font-weight:600; color:var(--teal-deep); margin-bottom:8px;">HISTORIAL CLÍNICO</p>
+      ${(r.clinicalHistory||[]).length ? r.clinicalHistory.map(h=>`<div style="font-size:13px; padding:4px 0; border-bottom:1px dashed var(--line);">${esc(h)}</div>`).join('') : '<p style="font-size:12px; color:var(--ink-soft);">Sin entradas registradas.</p>'}
+    </div>
+
+    <div class="card" style="margin-bottom:16px;">
+      <p style="font-size:11.5px; font-weight:600; color:var(--teal-deep); margin-bottom:8px;">HISTORIAL DE SALUD (por día)</p>
+      ${healthLogs.length ? `<div style="max-height:220px; overflow-y:auto;">${healthLogs.map(h=>`<div style="font-size:12.5px; padding:8px 0; border-bottom:1px dashed var(--line);"><strong style="color:var(--navy);">${fmtDate(h.date)}</strong> — ${esc(h.careLevel||'')}${h.peso?' · '+h.peso+' kg':''}${h.evolutionNote?' · '+esc(h.evolutionNote):''}</div>`).join('')}</div>` : '<p style="font-size:12px; color:var(--ink-soft);">Sin registros de salud todavía.</p>'}
+    </div>
+
+    <div class="card">
+      <p style="font-size:11.5px; font-weight:600; color:var(--teal-deep); margin-bottom:8px;">HISTORIAL DE CUOTAS</p>
+      ${cuotas.length ? `<div class="table-wrap"><table><thead><tr><th>Mes</th><th>Monto</th><th>Pagado</th><th>Estado</th></tr></thead><tbody>${cuotas.map(c=>`<tr><td>${monthLabel(c.monthKey)}</td><td>${fmt(c.amountDue)}</td><td>${fmt(c.amountPaid)}</td><td><span class="pill ${c.status==='pagado'?'pill-ok':(c.status==='parcial'?'pill-teal':'pill-warn')}">${c.status==='pagado'?'Pagado':(c.status==='parcial'?'Parcial':'Pendiente')}</span></td></tr>`).join('')}</tbody></table></div>` : '<p style="font-size:12px; color:var(--ink-soft);">Sin cuotas registradas todavía.</p>'}
+    </div>
+  `;
+}
+function renderComunicaciones(){ renderResumenList(); renderResumenDetail(); }
 
 /* ============ GRÁFICOS (Chart.js) ============ */
 let chartInstances={};
@@ -2015,6 +2272,7 @@ function renderDashboard(){
   ensureCuotasForMonth(); ensureStaffPaymentsForMonth();
   const mk=curMonthKey();
   document.getElementById('dbResidentes').textContent = DATA.residents.filter(r=>r.status==='Activo').length;
+  document.getElementById('dbPersonalActivo').textContent = DATA.staff.filter(s=>s.status==='Activo').length;
   const cuotasMes=DATA.cuotas.filter(c=>c.monthKey===mk);
   const pend = cuotasMes.reduce((s,c)=>s+Math.max(0,c.amountDue-c.amountPaid),0);
   document.getElementById('dbCuotasPend').textContent = fmt(pend);
@@ -2034,6 +2292,45 @@ function renderDashboard(){
   renderGeneral(); // reutiliza el gráfico de barras para el dashboard
 }
 
+/* ---------- DESGLOSE (drilldown) del dashboard ---------- */
+function openDrilldown(kind){
+  const mk=curMonthKey();
+  let title='Detalle', rowsHTML='';
+  if(kind==='residentes'){
+    title='Residentes activos — detalle';
+    const rows=DATA.residents.filter(r=>r.status==='Activo');
+    rowsHTML = rows.length ? `<div class="table-wrap"><table><thead><tr><th>Residente</th><th>Grado</th><th>Edad</th><th>Plan mensual</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.name)}</td><td>Grado ${esc(r.dependencia||'—')}</td><td>${esc(calcAge(r.birth)||'—')}</td><td>${fmt(r.planAmount)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="empty-state">Sin residentes activos.</p>';
+  }
+  else if(kind==='personal'){
+    title='Personal activo — detalle';
+    const rows=DATA.staff.filter(s=>s.status==='Activo');
+    rowsHTML = rows.length ? `<div class="table-wrap"><table><thead><tr><th>Empleado</th><th>Cargo</th><th>Turno</th><th>Sueldo</th></tr></thead><tbody>${rows.map(s=>`<tr><td>${esc(s.name)}</td><td>${esc(s.role||'—')}</td><td>${esc((s.shifts||[s.shift]).join(', '))}</td><td>${fmt(s.salary)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="empty-state">Sin personal activo.</p>';
+  }
+  else if(kind==='cuotasPend'){
+    title='Cuotas pendientes de '+monthLabel(mk);
+    const rows=DATA.cuotas.filter(c=>c.monthKey===mk && c.status!=='pagado');
+    rowsHTML = rows.length ? `<div class="table-wrap"><table><thead><tr><th>Residente</th><th>Adeudado</th><th>Pagado</th><th>Pendiente</th><th>Estado</th></tr></thead><tbody>${rows.map(c=>{const r=DATA.residents.find(x=>x.id===c.residentId); return `<tr><td>${esc(r?r.name:'—')}</td><td>${fmt(c.amountDue)}</td><td>${fmt(c.amountPaid)}</td><td style="color:var(--warn); font-weight:600;">${fmt(c.amountDue-c.amountPaid)}</td><td><span class="pill ${c.status==='parcial'?'pill-teal':'pill-warn'}">${c.status==='parcial'?'Parcial':'Pendiente'}</span></td></tr>`;}).join('')}</tbody></table></div>` : '<p class="empty-state">No hay cuotas pendientes este mes.</p>';
+  }
+  else if(kind==='personalPend'){
+    title='Personal por pagar de '+monthLabel(mk);
+    const rows=DATA.staffPayments.filter(p=>p.monthKey===mk && p.status!=='pagado');
+    rowsHTML = rows.length ? `<div class="table-wrap"><table><thead><tr><th>Empleado</th><th>Sueldo</th><th>Pagado</th><th>Pendiente</th><th>Estado</th></tr></thead><tbody>${rows.map(p=>{const s=DATA.staff.find(x=>x.id===p.staffId); return `<tr><td>${esc(s?s.name:'—')}</td><td>${fmt(p.amountDue)}</td><td>${fmt(p.amountPaid)}</td><td style="color:var(--warn); font-weight:600;">${fmt(p.amountDue-p.amountPaid)}</td><td><span class="pill ${p.status==='parcial'?'pill-teal':'pill-warn'}">${p.status==='parcial'?'Parcial':'Pendiente'}</span></td></tr>`;}).join('')}</tbody></table></div>` : '<p class="empty-state">No hay pagos de personal pendientes.</p>';
+  }
+  else if(kind==='gastos'){
+    title='Gastos de '+monthLabel(mk);
+    const rows=gastosInMonth(mk).sort((a,b)=>b.date.localeCompare(a.date));
+    rowsHTML = rows.length ? `<div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Categoría</th><th>Descripción</th><th>Monto</th></tr></thead><tbody>${rows.map(g=>`<tr><td>${fmtDate(g.date)}</td><td>${esc(g.category)}</td><td>${esc(g.description)}</td><td style="color:var(--warn); font-weight:600;">${fmt(g.amount)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="empty-state">Sin gastos registrados este mes.</p>';
+  }
+  else if(kind==='stock'){
+    title='Ítems con bajo stock';
+    const rows=DATA.inventory.filter(i=>i.qty<=i.min);
+    rowsHTML = rows.length ? `<div class="table-wrap"><table><thead><tr><th>Artículo</th><th>Categoría</th><th>Actual</th><th>Mínimo</th></tr></thead><tbody>${rows.map(i=>`<tr><td>${esc(i.name)}</td><td>${esc(i.category)}</td><td style="color:var(--warn); font-weight:600;">${i.qty} ${esc(i.unit)}</td><td>${i.min} ${esc(i.unit)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="empty-state">Todo el inventario está en niveles adecuados.</p>';
+  }
+  document.getElementById('drilldownTitle').textContent=title;
+  document.getElementById('drilldownBody').innerHTML=rowsHTML;
+  openModal('modalDrilldown');
+}
+
 /* ============ RENDER MAESTRO ============ */
 function renderAll(){
   renderDashboard();
@@ -2046,6 +2343,7 @@ function renderAll(){
   renderComunicaciones();
 }
 renderAll();
+startLiveClock();
 
 /* ---------- PRIVACIDAD: difuminar tras 10s de inactividad ---------- */
 let inactivityTimer;
