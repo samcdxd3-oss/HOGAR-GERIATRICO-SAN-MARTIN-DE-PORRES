@@ -307,6 +307,10 @@ tr:last-child td{border-bottom:none;}
         <div class="topbar-sub" id="viewDate"></div>
       </div>
       <div style="display:flex; align-items:center; gap:14px;">
+        <div id="viewDateBanner" style="display:none; align-items:center; gap:8px; background:var(--warn-bg); border:1px solid var(--warn); color:var(--warn); font-family:var(--mono); font-size:12px; padding:6px 12px; border-radius:20px;">
+          <span>📅 Viendo: <strong id="viewDateBannerText">—</strong></span>
+          <button class="btn btn-ghost btn-sm" style="padding:2px 10px; font-size:11px; border-color:var(--warn); color:var(--warn);" onclick="clearGlobalViewDate()">Volver a hoy</button>
+        </div>
         <div class="live-clock" id="liveClock">—</div>
         <button class="btn btn-ghost btn-sm btn-icon" onclick="openActivityLog()" title="Bitácora de actividad (todos los movimientos)">⋮</button>
         <button class="btn btn-primary btn-sm" onclick="openResidentModal()">+ Nuevo residente</button>
@@ -773,8 +777,10 @@ tr:last-child td{border-bottom:none;}
     <button type="button" class="btn btn-ghost btn-sm" onclick="addMedRow()">+ Agregar indicación</button>
 
     <p class="modal-sub">Dieta del día</p>
-    <div id="scheduleList" style="display:flex; flex-direction:column; gap:8px; margin-bottom:10px;"></div>
-    <button type="button" class="btn btn-ghost btn-sm" onclick="addScheduleRow()">+ Agregar comida/horario</button>
+    <div class="field-row">
+      <div class="field"><label>Debe comer</label><textarea id="sDietaComer" rows="3" placeholder="Ej. Verduras cocidas, pescado, avena, frutas blandas…"></textarea></div>
+      <div class="field"><label>No debe comer</label><textarea id="sDietaEvitar" rows="3" placeholder="Ej. Frituras, sal en exceso, azúcar, embutidos…"></textarea></div>
+    </div>
 
     <div class="modal-actions">
       <button class="btn btn-ghost btn-sm" onclick="closeModal('modalSalud')">Cerrar</button>
@@ -945,7 +951,10 @@ tr:last-child td{border-bottom:none;}
         <div id="calActivityGrid" class="cal-grid"></div>
       </div>
       <div>
-        <h4 style="font-size:13.5px; color:var(--navy); margin-bottom:10px;" id="activityDayLabel">Hoy</h4>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; gap:8px; flex-wrap:wrap;">
+          <h4 style="font-size:13.5px; color:var(--navy);" id="activityDayLabel">Hoy</h4>
+          <button class="btn btn-primary btn-sm" id="activityJumpBtn" onclick="jumpToActivityDate()">Ver Salud y Cuidado de este día</button>
+        </div>
         <div id="activityList" style="max-height:340px; overflow-y:auto;"></div>
       </div>
     </div>
@@ -1081,6 +1090,7 @@ function startLiveClock(){
 }
 
 let calActivityYear, calActivityMonth, calActivitySelectedDate=null;
+let globalViewDate=null; // null = viendo "hoy" en vivo; si tiene fecha, estamos viajando a ese día en Salud y Cuidado
 function openActivityLog(){
   const now=new Date();
   if(calActivityYear==null){ calActivityYear=now.getFullYear(); calActivityMonth=now.getMonth(); }
@@ -1118,6 +1128,32 @@ function renderActivityDayList(){
   document.getElementById('activityDayLabel').textContent = calActivitySelectedDate ? fmtDate(calActivitySelectedDate) : 'Hoy';
   const rows = DATA.activityLog.filter(a=>a.date===calActivitySelectedDate).sort((a,b)=>b.time.localeCompare(a.time));
   list.innerHTML = rows.length ? rows.map(a=>`<div class="activity-row"><span class="activity-time">${a.time}</span><span class="activity-dot"></span><span>${esc(a.text)}</span></div>`).join('') : '<p style="font-size:12.5px; color:var(--ink-soft);">Sin movimientos ese día.</p>';
+  const jumpBtn=document.getElementById('activityJumpBtn');
+  if(jumpBtn){
+    const isToday = calActivitySelectedDate===todayISO();
+    jumpBtn.textContent = isToday ? 'Ver Salud y Cuidado (hoy)' : 'Ver Salud y Cuidado de ese día';
+  }
+}
+function jumpToActivityDate(){
+  if(!calActivitySelectedDate) return;
+  setGlobalViewDate(calActivitySelectedDate===todayISO() ? null : calActivitySelectedDate);
+  closeModal('modalActivity');
+  switchView('salud');
+}
+function setGlobalViewDate(date){
+  globalViewDate = date;
+  updateViewDateBanner();
+  renderSalud();
+}
+function clearGlobalViewDate(){ setGlobalViewDate(null); }
+function updateViewDateBanner(){
+  const banner=document.getElementById('viewDateBanner');
+  if(globalViewDate){
+    banner.style.display='flex';
+    document.getElementById('viewDateBannerText').textContent = fmtDate(globalViewDate);
+  } else {
+    banner.style.display='none';
+  }
 }
 
 function openModal(id){ document.getElementById(id).classList.add('open'); }
@@ -1410,18 +1446,6 @@ function collectMeds(){
     freq: row.querySelector('.med-freq').value.trim(), required: row.querySelector('.med-required').checked
   })).filter(m=>m.name);
 }
-function scheduleRowHTML(s){
-  return `<div class="field-row schedule-row">
-    <input type="time" class="sched-time" value="${esc(s?.time||'')}">
-    <div style="display:flex; gap:6px;"><input type="text" class="sched-activity" placeholder="Comida (ej. Desayuno: avena con fruta)" value="${esc(s?.activity||'')}" style="flex:1;"><button type="button" class="btn btn-danger btn-sm btn-icon" onclick="this.closest('.schedule-row').remove()">✕</button></div>
-  </div>`;
-}
-function addScheduleRow(s){ const list=document.getElementById('scheduleList'); const d=document.createElement('div'); d.innerHTML=scheduleRowHTML(s); list.appendChild(d.firstElementChild); }
-function collectSchedule(){
-  return Array.from(document.querySelectorAll('#scheduleList .schedule-row')).map(row=>({
-    time: row.querySelector('.sched-time').value, activity: row.querySelector('.sched-activity').value.trim()
-  })).filter(s=>s.activity).sort((a,b)=>(a.time||'').localeCompare(b.time||''));
-}
 
 let currentSaludResident=null;
 let saludSelectedDate=null;
@@ -1442,6 +1466,20 @@ function openSaludModal(id){
   document.getElementById('saludCalendarWrap').style.display='none';
   const now=new Date(); calSaludYear=now.getFullYear(); calSaludMonth=now.getMonth();
   loadSaludDay();
+  openModal('modalSalud');
+}
+function openSaludModalAt(id, date){
+  const r=DATA.residents.find(x=>x.id===id);
+  if(!r) return;
+  currentSaludResident=r;
+  saludSelectedDate=date||todayISO();
+  document.getElementById('saludModalTitle').textContent='Salud y cuidado — '+r.name;
+  document.getElementById('saludResidentId').value=r.id;
+  const [y,m]=saludSelectedDate.split('-').map(Number);
+  calSaludYear=y; calSaludMonth=m-1;
+  document.getElementById('saludCalendarWrap').style.display= (date && date!==todayISO()) ? 'block' : 'none';
+  loadSaludDay();
+  renderCalSalud();
   openModal('modalSalud');
 }
 function saludGoToday(){ saludSelectedDate=todayISO(); loadSaludDay(); renderCalSalud(); }
@@ -1483,17 +1521,18 @@ function loadSaludDay(){
   let log = getHealthLog(r, saludSelectedDate);
   if(!log && isToday){
     const prev = latestHealthLogBefore(r, saludSelectedDate);
-    log = prev ? {...prev, date:saludSelectedDate, evolutionNote:''} : {date:saludSelectedDate, careLevel:r.careLevel||'Básico', peso:r.peso||'', indicaciones:[], dieta:[], recomendaciones:'', evolutionNote:''};
+    log = prev ? {...prev, date:saludSelectedDate, evolutionNote:''} : {date:saludSelectedDate, careLevel:r.careLevel||'Básico', peso:r.peso||'', indicaciones:[], dieta:{comer:'',evitar:''}, recomendaciones:'', evolutionNote:''};
   }
-  if(!log) log = {date:saludSelectedDate, careLevel:r.careLevel||'Básico', peso:'', indicaciones:[], dieta:[], recomendaciones:'', evolutionNote:''};
+  if(!log) log = {date:saludSelectedDate, careLevel:r.careLevel||'Básico', peso:'', indicaciones:[], dieta:{comer:'',evitar:''}, recomendaciones:'', evolutionNote:''};
+  const dieta = (log.dieta && !Array.isArray(log.dieta)) ? log.dieta : {comer:'',evitar:''};
   document.getElementById('sCareLevel').value = log.careLevel||'Básico';
   document.getElementById('sPeso').value = log.peso||'';
   document.getElementById('sEvolution').value = log.evolutionNote||'';
   document.getElementById('sRecommendations').value = log.recomendaciones||'';
+  document.getElementById('sDietaComer').value = dieta.comer||'';
+  document.getElementById('sDietaEvitar').value = dieta.evitar||'';
   document.getElementById('medsList').innerHTML='';
   (log.indicaciones||[]).forEach(m=>addMedRow(m));
-  document.getElementById('scheduleList').innerHTML='';
-  (log.dieta||[]).forEach(s=>addScheduleRow(s));
 }
 function saveSalud(){
   const r=currentSaludResident;
@@ -1504,7 +1543,7 @@ function saveSalud(){
     evolutionNote: document.getElementById('sEvolution').value.trim(),
     recomendaciones: document.getElementById('sRecommendations').value.trim(),
     indicaciones: collectMeds(),
-    dieta: collectSchedule()
+    dieta: {comer: document.getElementById('sDietaComer').value.trim(), evitar: document.getElementById('sDietaEvitar').value.trim()}
   };
   r.healthLogs = r.healthLogs || [];
   const idx = r.healthLogs.findIndex(h=>h.date===saludSelectedDate);
@@ -1517,28 +1556,34 @@ function saveSalud(){
 function renderSalud(){
   const search=(document.getElementById('saludSearch')?.value||'').toLowerCase();
   const list=document.getElementById('saludList');
+  const viewDate = globalViewDate || todayISO();
+  const isPast = !!globalViewDate;
   const rows=DATA.residents.filter(r=>!search || r.name.toLowerCase().includes(search));
   list.innerHTML = rows.map(r=>{
-    const todayLog = getHealthLog(r, todayISO()) || latestHealthLogBefore(r, todayISO()+'~');
-    const meds=(todayLog?.indicaciones||[]).filter(m=>m.name);
-    const dieta=(todayLog?.dieta||[]).slice(0,3);
+    const dayLog = getHealthLog(r, viewDate) || (isPast ? null : latestHealthLogBefore(r, viewDate+'~'));
+    const meds=(dayLog?.indicaciones||[]).filter(m=>m.name);
+    const dieta = (dayLog?.dieta && !Array.isArray(dayLog.dieta)) ? dayLog.dieta : {comer:'',evitar:''};
     const prof = [r.profRole, r.profName].filter(Boolean).join(' — ');
+    const btnLabel = isPast ? 'Ver / editar ese día' : 'Registro de hoy';
     return `<div class="card">
       <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:14px; flex-wrap:wrap;">
         <div>
-          <h3 style="font-size:16px; margin-bottom:4px;">${esc(r.name)} <span class="pill pill-teal" style="margin-left:6px;">${esc(r.careLevel||'—')}</span></h3>
-          <p style="font-size:12.5px; color:var(--ink-soft);">Grado ${esc(r.dependencia||'—')} · ${esc(calcAge(r.birth)||'—')} · ${esc(prof||'Sin profesional asignado')}${todayLog?.peso?' · '+todayLog.peso+' kg':''}</p>
+          <h3 style="font-size:16px; margin-bottom:4px;">${esc(r.name)} <span class="pill pill-teal" style="margin-left:6px;">${esc(dayLog?.careLevel||r.careLevel||'—')}</span></h3>
+          <p style="font-size:12.5px; color:var(--ink-soft);">Grado ${esc(r.dependencia||'—')} · ${esc(calcAge(r.birth)||'—')} · ${esc(prof||'Sin profesional asignado')}${dayLog?.peso?' · '+dayLog.peso+' kg':''}</p>
         </div>
-        <button class="btn btn-primary btn-sm" onclick="openSaludModal('${r.id}')">Registro de hoy</button>
+        <button class="btn btn-primary btn-sm" onclick="openSaludModalAt('${r.id}','${viewDate}')">${btnLabel}</button>
       </div>
       <div class="grid-2" style="margin-top:14px;">
         <div>
           <p style="font-size:11.5px; font-weight:600; color:var(--teal-deep); margin-bottom:6px;">INDICACIONES MÉDICAS</p>
-          ${meds.length ? meds.map(m=>`<div style="font-size:12.5px; padding:4px 0;">${m.required?'🔴':'⚪'} <strong>${esc(m.name)}</strong> ${esc(m.dose)} — ${esc(m.freq)}</div>`).join('') : '<p style="font-size:12px; color:var(--ink-soft);">Sin indicaciones registradas hoy.</p>'}
+          ${meds.length ? meds.map(m=>`<div style="font-size:12.5px; padding:4px 0;">${m.required?'🔴':'⚪'} <strong>${esc(m.name)}</strong> ${esc(m.dose)} — ${esc(m.freq)}</div>`).join('') : `<p style="font-size:12px; color:var(--ink-soft);">Sin indicaciones registradas ${isPast?'ese día':'hoy'}.</p>`}
         </div>
         <div>
-          <p style="font-size:11.5px; font-weight:600; color:var(--teal-deep); margin-bottom:6px;">DIETA DE HOY</p>
-          ${dieta.length ? dieta.map(s=>`<div style="font-size:12.5px; padding:4px 0;"><span style="font-family:var(--mono); color:var(--navy);">${esc(s.time)}</span> — ${esc(s.activity)}</div>`).join('') : '<p style="font-size:12px; color:var(--ink-soft);">Sin dieta registrada hoy.</p>'}
+          <p style="font-size:11.5px; font-weight:600; color:var(--teal-deep); margin-bottom:6px;">DIETA${isPast?'':' DE HOY'}</p>
+          ${(dieta.comer||dieta.evitar) ? `
+            ${dieta.comer?`<div style="font-size:12.5px; padding:3px 0;"><span style="color:var(--ok);">✓ Comer:</span> ${esc(dieta.comer)}</div>`:''}
+            ${dieta.evitar?`<div style="font-size:12.5px; padding:3px 0;"><span style="color:var(--warn);">✕ Evitar:</span> ${esc(dieta.evitar)}</div>`:''}
+          ` : `<p style="font-size:12px; color:var(--ink-soft);">Sin dieta registrada ${isPast?'ese día':'hoy'}.</p>`}
         </div>
       </div>
     </div>`;
