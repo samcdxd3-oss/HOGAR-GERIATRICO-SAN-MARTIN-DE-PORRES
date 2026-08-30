@@ -2,7 +2,7 @@
   "name": "San Martín de Porres — Sistema de Gestión",
   "short_name": "San Martín SG",
   "description": "Sistema de gestión para el Centro de Atención Residencial Geriátrico Mixto San Martín de Porres.",
-  "start_url": "./sistema.html",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#F3FAFB",
