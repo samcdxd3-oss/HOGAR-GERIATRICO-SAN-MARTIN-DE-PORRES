@@ -1,0 +1,16 @@
+{
+  "name": "San Martín de Porres — Sistema de Gestión",
+  "short_name": "San Martín SG",
+  "description": "Sistema de gestión para el Centro de Atención Residencial Geriátrico Mixto San Martín de Porres.",
+  "start_url": "./sistema.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F3FAFB",
+  "theme_color": "#0E4796",
+  "orientation": "any",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
