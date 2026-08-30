@@ -8,6 +8,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,420&family=Work+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
 window.addEventListener('DOMContentLoaded', function(){
   setTimeout(function(){
@@ -261,7 +264,31 @@ tr:last-child td{border-bottom:none;}
 </head>
 <body>
 
-<div class="app">
+<div class="modal-overlay open" id="authScreen">
+  <div class="modal" style="max-width:380px;">
+    <div style="display:flex; justify-content:center; margin-bottom:16px;">
+      <svg width="52" height="52" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="50" fill="var(--teal)"/>
+        <g fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="38" cy="30" r="6.2" fill="#fff" stroke="none"/>
+          <path d="M38 38 C 30 40, 27 48, 28 58 M38 38 C 46 40, 49 48, 47 58 M30 47 L46 47"/>
+          <circle cx="63" cy="34" r="5.6" fill="#fff" stroke="none"/>
+          <path d="M63 41 C 56 44, 53 52, 55 62 M63 41 C 70 44, 73 50, 71 58 M56 50 L70 50"/>
+          <path d="M47 58 C 52 62, 58 62, 63 58" stroke-width="3.2"/>
+        </g>
+      </svg>
+    </div>
+    <p class="eyebrow" style="text-align:center; justify-content:center; margin-bottom:4px;">Acceso privado</p>
+    <h2 style="text-align:center; font-size:19px; margin-bottom:22px;">CEAPAM San Martín de Porres</h2>
+    <div class="field"><label>Correo</label><input id="authEmail" type="email" placeholder="tu-correo@ejemplo.com" autocomplete="email"></div>
+    <div class="field"><label>Contraseña</label><input id="authPass" type="password" placeholder="Contraseña" autocomplete="current-password"></div>
+    <p id="authError" style="display:none; color:var(--warn); font-size:12.5px; margin-bottom:10px;"></p>
+    <button class="btn btn-primary" style="width:100%; justify-content:center;" onclick="doLogin()" id="authLoginBtn">Entrar</button>
+    <p style="font-size:11.5px; color:var(--ink-soft); text-align:center; margin-top:16px;">Acceso solo para personal autorizado. Si no tienes cuenta, contacta al administrador del sistema.</p>
+  </div>
+</div>
+
+<div class="app" id="appRoot" style="display:none;">
   <aside class="sidebar" id="sidebar">
     <div class="brand">
       <svg class="brand-logo" viewBox="0 0 100 100">
@@ -295,7 +322,8 @@ tr:last-child td{border-bottom:none;}
       <li><button data-view="comunicaciones"><span class="nav-ic">◓</span>Resumen de residentes</button></li>
     </ul>
     <div class="sidebar-foot">
-      <p>Sistema de gestión — datos guardados<br>localmente en este navegador.</p>
+      <p id="sessionInfo">Conectado — datos sincronizados en la nube.</p>
+      <button class="btn btn-ghost btn-sm" style="width:100%; margin-top:10px; border-color:rgba(255,255,255,0.3); color:#EAF3FB;" onclick="doLogout()">Cerrar sesión</button>
     </div>
   </aside>
 
@@ -979,10 +1007,22 @@ tr:last-child td{border-bottom:none;}
 
 <script>
 /* =====================================================
-   CEAPAM San Martín de Porres — Sistema de Gestión (prototipo)
-   Persistencia local (localStorage). Sustituir por backend al llevarlo a producción multiusuario.
+   CEAPAM San Martín de Porres — Sistema de Gestión
+   Persistencia en la nube: Firestore + Authentication (Firebase) + archivos (Cloudflare R2 vía Worker).
 ===================================================== */
-const STORAGE_KEY = 'ceapamSMP_v1';
+const firebaseConfig = {
+  apiKey: "AIzaSyBThGXlIBEfzWGSa2jM7Ed75iJnTMvtE_I",
+  authDomain: "samc-hg-san-martin-de-porres.firebaseapp.com",
+  projectId: "samc-hg-san-martin-de-porres",
+  storageBucket: "samc-hg-san-martin-de-porres.firebasestorage.app",
+  messagingSenderId: "854651769173",
+  appId: "1:854651769173:web:4185615d00d178144c9fdc"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+const DATA_DOC = db.collection('sistema').doc('datos');
+
 const CURRENCY = 'S/ ';
 function defaultGastoCategories(){ return [
   {name:'Personal', color:'#0E4796'},
@@ -1006,64 +1046,86 @@ function monthLabel(mk){ const [y,m]=mk.split('-').map(Number); return MONTH_NAM
 function fmt(n){ return CURRENCY + Number(n||0).toLocaleString('es-PE',{minimumFractionDigits:0, maximumFractionDigits:2}); }
 function fmtDate(d){ if(!d) return '—'; const dt=new Date(d+'T00:00:00'); return dt.toLocaleDateString('es-PE',{day:'2-digit',month:'short',year:'numeric'}); }
 function esc(s){ const d=document.createElement('div'); d.textContent = s==null?'':String(s); return d.innerHTML; }
-function fileToDataURL(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(file); }); }
 
-function seedData(){
-  const residents = [
-    {id:uid(), name:'Elena Rodríguez', dni:'12345678', birth:'1940-04-12', room:'102', admission:'2023-01-15', contractDate:'2023-01-10', status:'Activo', planAmount:1200, contractFile:null,
-     emergencyName:'Ana García', emergencyRelation:'Hija', emergencyPhone:'945 915 749', family:[{name:'Ana García', relation:'Hija', phone:'945 915 749'}],
-     careLevel:'Intermedio', doctor:'Dr. Juan Pérez', allergies:'Penicilina', recommendations:'Control de presión arterial diario.',
-     medications:[{name:'Metformina', dose:'500mg', freq:'2 veces al día', required:true},{name:'Enalapril', dose:'10mg', freq:'1 vez al día', required:true}],
-     schedule:[{time:'07:00', activity:'Desayuno'},{time:'09:00', activity:'Baño y aseo personal'},{time:'13:00', activity:'Almuerzo'},{time:'16:00', activity:'Fisioterapia'},{time:'19:30', activity:'Cena'},{time:'21:00', activity:'Medicación nocturna'}],
-     evolution:[{date:'2026-08-01', note:'Buen ánimo, participó en actividad grupal.'}]},
-    {id:uid(), name:'Roberto Pérez', dni:'23456789', birth:'1938-08-22', room:'104', admission:'2022-11-03', contractDate:'2022-10-28', status:'Activo', planAmount:1100, contractFile:null,
-     emergencyName:'Sofía Pérez', emergencyRelation:'Hija', emergencyPhone:'990 365 566', family:[{name:'Sofía Pérez', relation:'Hija', phone:'990 365 566'}],
-     careLevel:'Básico', doctor:'Dra. Marta Ruiz', allergies:'Ninguna conocida', recommendations:'',
-     medications:[], schedule:[{time:'07:30', activity:'Desayuno'},{time:'13:00', activity:'Almuerzo'},{time:'19:30', activity:'Cena'}], evolution:[]},
-    {id:uid(), name:'María Torres', dni:'34567890', birth:'1945-02-10', room:'108', admission:'2024-03-20', contractDate:'2024-03-15', status:'Activo', planAmount:1500, contractFile:null,
-     emergencyName:'Carlos Torres', emergencyRelation:'Hijo', emergencyPhone:'922 333 444', family:[{name:'Carlos Torres', relation:'Hijo', phone:'922 333 444'}],
-     careLevel:'Intensivo', doctor:'Dr. Juan Pérez', allergies:'AINEs', recommendations:'Requiere aspiración de secreciones según necesidad.',
-     medications:[{name:'Furosemida', dose:'40mg', freq:'1 vez al día', required:true}], schedule:[{time:'07:00', activity:'Control de signos vitales'},{time:'08:00', activity:'Desayuno asistido'},{time:'12:30', activity:'Almuerzo asistido'},{time:'18:30', activity:'Cena asistida'}], evolution:[]},
-  ];
-  const staff = [
-    {id:uid(), name:'María González', dni:'40111222', role:'Enfermera', shift:'Mañana', phone:'987 111 222', hireDate:'2022-02-01', salary:1500, status:'Activo'},
-    {id:uid(), name:'Ana Ramírez', dni:'40222333', role:'Cuidadora', shift:'Tarde', phone:'987 222 333', hireDate:'2022-06-15', salary:1200, status:'Activo'},
-    {id:uid(), name:'Luis Álvarez', dni:'40333444', role:'Cuidador', shift:'Noche', phone:'987 333 444', hireDate:'2023-01-10', salary:1200, status:'Activo'},
-  ];
-  const inventory = [
-    {id:uid(), name:'Paracetamol 500mg', category:'Medicamentos', unit:'cajas', qty:450, min:50},
-    {id:uid(), name:'Guantes de nitrilo', category:'Suministros médicos', unit:'cajas', qty:120, min:30},
-    {id:uid(), name:'Alcohol gel 5L', category:'Suministros médicos', unit:'botellas', qty:6, min:15},
-  ];
-  const now=new Date();
-  const gastos=[
-    {id:uid(), category:'Personal', description:'Planilla del mes', amount:3800, date:monthKey(now.getFullYear(),now.getMonth())+'-03', fileName:null, fileData:null},
-    {id:uid(), category:'Alimentación', description:'Compra de víveres', amount:1200, date:monthKey(now.getFullYear(),now.getMonth())+'-06', fileName:null, fileData:null},
-    {id:uid(), category:'Suministros médicos', description:'Reposición de farmacia', amount:600, date:monthKey(now.getFullYear(),now.getMonth())+'-10', fileName:null, fileData:null},
-  ];
-  return {residents, staff, inventory, gastos, cuotas:[], invMovements:[], staffPayments:[], announcements:[
-    {id:uid(), title:'Bienvenida al nuevo sistema', body:'A partir de hoy todo el registro de residentes, pagos y salud se maneja desde aquí.', date:todayISO()}
-  ], familyLogs:[]};
+/* ---- Archivos: se suben al Worker de Cloudflare (que los guarda en R2) y se guarda solo el link ---- */
+const WORKER_URL = "https://samc-hg-worker.sebmarmanilloapk.workers.dev";
+const WORKER_UPLOAD_SECRET = "kUKhizn_MkCI6UGrc6vcQ56pvWf5oMwb6iY9H0J8rkc";
+
+async function uploadFile(file, folder){
+  const filename = (folder||'archivo')+'_'+file.name;
+  const res = await fetch(WORKER_URL+'/upload?filename='+encodeURIComponent(filename), {
+    method: 'POST',
+    headers: {
+      'X-Upload-Secret': WORKER_UPLOAD_SECRET,
+      'Content-Type': file.type || 'application/octet-stream'
+    },
+    body: file
+  });
+  if(!res.ok) throw new Error('No se pudo subir el archivo ('+res.status+')');
+  const data = await res.json();
+  return data.url;
 }
+// Compatibilidad con el nombre anterior usado en varias partes del código.
+async function fileToDataURL(file){ return uploadFile(file, 'archivos'); }
+
 function emptyData(){ return {residents:[], staff:[], inventory:[], gastos:[], gastoCategories:defaultGastoCategories(), cuotas:[], invMovements:[], staffPayments:[], announcements:[], familyLogs:[], activityLog:[]}; }
 
-function loadData(){
-  try{
-    const raw=localStorage.getItem(STORAGE_KEY);
-    if(raw){
-      const parsed=JSON.parse(raw);
+let DATA = emptyData();
+let suppressNextSnapshot = false;
+
+function saveData(d){
+  suppressNextSnapshot = true;
+  DATA_DOC.set(d).catch(e=>{ console.error('Error guardando en Firestore', e); showToast('No se pudo guardar — revisa tu conexión a internet'); });
+}
+
+function startDataSync(){
+  DATA_DOC.onSnapshot(doc=>{
+    if(suppressNextSnapshot){ suppressNextSnapshot=false; return; }
+    if(doc.exists){
+      const parsed = doc.data();
       if(!parsed.gastoCategories) parsed.gastoCategories = defaultGastoCategories();
       if(!parsed.familyLogs) parsed.familyLogs = [];
       if(!parsed.activityLog) parsed.activityLog = [];
-      return parsed;
+      DATA = parsed;
+    } else {
+      DATA = emptyData();
+      DATA_DOC.set(DATA);
     }
-  }catch(e){ console.error(e); }
-  // Instalación nueva: arranca completamente vacía, sin datos de prueba.
-  const fresh=emptyData(); saveData(fresh); return fresh;
+    cleanOrphans();
+    renderAll();
+  }, e=>{ console.error('Error de sincronización', e); showToast('Se perdió la conexión con la base de datos'); });
 }
-function saveData(d){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); }catch(e){ console.error(e); } }
-let DATA = loadData();
-cleanOrphans();
+
+/* ---- Login (solo correo/contraseña, sin registro público) ---- */
+function doLogin(){
+  const email=document.getElementById('authEmail').value.trim();
+  const pass=document.getElementById('authPass').value;
+  const err=document.getElementById('authError');
+  err.style.display='none';
+  if(!email||!pass){ err.textContent='Ingresa tu correo y contraseña'; err.style.display='block'; return; }
+  document.getElementById('authLoginBtn').textContent='Ingresando…';
+  auth.signInWithEmailAndPassword(email, pass).catch(e=>{
+    document.getElementById('authLoginBtn').textContent='Entrar';
+    const map={'auth/invalid-credential':'Correo o contraseña incorrectos.', 'auth/user-not-found':'No existe una cuenta con ese correo.', 'auth/wrong-password':'Contraseña incorrecta.', 'auth/invalid-email':'Correo no válido.', 'auth/too-many-requests':'Demasiados intentos. Espera unos minutos.'};
+    err.textContent = map[e.code] || ('Error: '+e.message);
+    err.style.display='block';
+  });
+}
+function doLogout(){ auth.signOut(); }
+document.getElementById('authPass').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
+
+auth.onAuthStateChanged(user=>{
+  if(user){
+    document.getElementById('authScreen').classList.remove('open');
+    document.getElementById('appRoot').style.display='';
+    const info=document.getElementById('sessionInfo');
+    if(info) info.textContent = 'Conectado como '+user.email;
+    startDataSync();
+  } else {
+    document.getElementById('authScreen').classList.add('open');
+    document.getElementById('appRoot').style.display='none';
+  }
+});
 
 function showToast(msg){
   const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
@@ -2387,8 +2449,7 @@ function renderAll(){
   renderRRHHAll();
   renderComunicaciones();
 }
-renderAll();
-startLiveClock();
+startLiveClock(); // el reloj no depende del login, puede arrancar de una vez
 
 /* ---------- PRIVACIDAD: difuminar tras 10s de inactividad ---------- */
 let inactivityTimer;
