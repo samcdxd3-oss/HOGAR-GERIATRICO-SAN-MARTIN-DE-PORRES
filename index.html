@@ -265,7 +265,7 @@ tr:last-child td{border-bottom:none;}
 @media(max-width:620px){
   .dash-hub{aspect-ratio:auto; display:flex; flex-wrap:wrap; justify-content:center; gap:20px 14px; max-width:380px;}
   .dash-hub-ring{display:none;}
-  .dash-hub-core{order:0; flex-basis:100%; margin-bottom:4px;}
+  .dash-hub-core{order:0; flex-basis:100%; max-width:96px; margin:0 auto 4px;}
   .dash-hub-node{position:static; width:100px;}
 }
 </style>
@@ -331,7 +331,6 @@ tr:last-child td{border-bottom:none;}
         </div>
         <div class="live-clock" id="liveClock">—</div>
         <button class="btn btn-ghost btn-sm btn-icon" onclick="openActivityLog()" title="Bitácora de actividad (todos los movimientos)">⋮</button>
-        <button class="btn btn-primary btn-sm" onclick="openResidentModal()">+ Nuevo residente</button>
       </div>
     </div>
 
