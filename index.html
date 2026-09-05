@@ -1067,14 +1067,15 @@ function esc(s){ const d=document.createElement('div'); d.textContent = s==null?
 
 /* ---- Archivos: se suben al Worker de Cloudflare (que los guarda en R2) y se guarda solo el link ---- */
 const WORKER_URL = "https://samc-hg-worker.sebmarmanilloapk.workers.dev";
-const WORKER_UPLOAD_SECRET = "kUKhizn_MkCI6UGrc6vcQ56pvWf5oMwb6iY9H0J8rkc";
 
 async function uploadFile(file, folder){
+  if(!auth.currentUser) throw new Error('Debes iniciar sesión para subir archivos');
+  const idToken = await auth.currentUser.getIdToken();
   const filename = (folder||'archivo')+'_'+file.name;
   const res = await fetch(WORKER_URL+'/upload?filename='+encodeURIComponent(filename), {
     method: 'POST',
     headers: {
-      'X-Upload-Secret': WORKER_UPLOAD_SECRET,
+      'Authorization': 'Bearer '+idToken,
       'Content-Type': file.type || 'application/octet-stream'
     },
     body: file
