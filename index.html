@@ -1222,6 +1222,23 @@ auth.onAuthStateChanged(async user=>{
   startAccessListener();
 });
 
+/* ---- Abrir archivos protegidos: el Worker de Cloudflare exige estar
+   autorizado para ver un archivo (nadie puede verlo solo con adivinar
+   o copiar la URL desde el código fuente). Cada vez que alguien hace
+   clic en un link de archivo, se pide un código de acceso fresco en
+   ese mismo instante — por eso nunca "vence" en el uso normal de la
+   app, mientras la persona siga con la sesión iniciada. ---- */
+async function openFile(url){
+  if(!url) return;
+  try{
+    if(auth.currentUser){
+      const token = await auth.currentUser.getIdToken();
+      url += (url.includes('?')?'&':'?') + 'authtoken=' + encodeURIComponent(token);
+    }
+  }catch(e){ console.error('No se pudo generar el acceso al archivo', e); }
+  window.open(url, '_blank');
+}
+
 function showToast(msg){
   const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
   clearTimeout(t._timer); t._timer=setTimeout(()=>t.classList.remove('show'), 2600);
@@ -1458,7 +1475,7 @@ function renderOtherFilesPreview(){
   const otherPreview=document.getElementById('rOtherFilesPreview');
   otherPreview.innerHTML = residentOtherFilesDraft.length ? residentOtherFilesDraft.map((f,i)=>`
     <span class="filechip" style="gap:8px;">
-      <a href="${f.data}" target="_blank" style="color:inherit; text-decoration:none;">📎 ${esc(f.name)}</a>
+      <a href="#" onclick="openFile('${esc(f.data)}'); return false;" style="color:inherit; text-decoration:none;">📎 ${esc(f.name)}</a>
       <button type="button" onclick="removeOtherFileDraft(${i})" style="all:unset; cursor:pointer; color:var(--warn); font-weight:700;">✕</button>
     </span>`).join('') : '<span style="font-size:12px; color:var(--ink-soft);">Sin archivos adicionales.</span>';
 }
@@ -1500,9 +1517,9 @@ async function openResidentModal(id){
   residentOtherFilesDraft = (r && r.otherFiles) ? [...r.otherFiles] : [];
   renderOtherFilesPreview();
   const preview=document.getElementById('rContractFilePreview');
-  preview.innerHTML = (r && r.contractFile) ? `<a class="filechip" href="${r.contractFile}" target="_blank">📎 ${esc(r.contractFileName||'Ver contrato archivado')}</a>` : '<span style="font-size:12px; color:var(--ink-soft);">Sin archivo adjunto todavía.</span>';
+  preview.innerHTML = (r && r.contractFile) ? `<a class="filechip" href="#" onclick="openFile('${esc(r.contractFile)}'); return false;">📎 ${esc(r.contractFileName||'Ver contrato archivado')}</a>` : '<span style="font-size:12px; color:var(--ink-soft);">Sin archivo adjunto todavía.</span>';
   const emgPreview=document.getElementById('rEmergencyFilePreview');
-  emgPreview.innerHTML = (r && r.emergencyFile) ? `<a class="filechip" href="${r.emergencyFile}" target="_blank">📎 ${esc(r.emergencyFileName||'Ver archivo')}</a>` : '<span style="font-size:12px; color:var(--ink-soft);">Sin archivo adjunto.</span>';
+  emgPreview.innerHTML = (r && r.emergencyFile) ? `<a class="filechip" href="#" onclick="openFile('${esc(r.emergencyFile)}'); return false;">📎 ${esc(r.emergencyFileName||'Ver archivo')}</a>` : '<span style="font-size:12px; color:var(--ink-soft);">Sin archivo adjunto.</span>';
   const famList=document.getElementById('familyMembersList');
   famList.innerHTML='';
   const fams = (r && r.family && r.family.length) ? r.family : [{}];
@@ -1574,7 +1591,7 @@ function renderResidents(){
       <td>Grado ${esc(r.dependencia||'—')}</td>
       <td>${fmtDate(r.admission)}</td>
       <td style="font-family:var(--mono);">${fmt(r.planAmount)}</td>
-      <td>${r.contractFile?`<a class="filechip" href="${r.contractFile}" target="_blank">📎 Ver</a>`:'<span class="pill pill-muted">Sin archivo</span>'}</td>
+      <td>${r.contractFile?`<a class="filechip" href="#" onclick="openFile('${esc(r.contractFile)}'); return false;">📎 Ver</a>`:'<span class="pill pill-muted">Sin archivo</span>'}</td>
       <td><span class="pill ${r.status==='Activo'?'pill-teal':'pill-muted'}">${esc(r.status)}</span></td>
       <td class="row-actions">
         <button class="btn btn-ghost btn-sm btn-icon" onclick="openResidentModal('${r.id}')" title="Editar">✎</button>
@@ -2032,7 +2049,7 @@ function renderGastos(){
       <td>${fmtDate(g.date)}</td>
       <td><span class="rank-dot" style="background:${categoryColor(g.category)}; display:inline-block; margin-right:6px;"></span>${esc(g.category)}</td>
       <td>${esc(g.description)}</td>
-      <td>${g.fileData?`<a class="filechip" href="${g.fileData}" target="_blank">📎 ${esc(g.fileName||'Ver')}</a>`:'<span class="pill pill-muted">—</span>'}</td>
+      <td>${g.fileData?`<a class="filechip" href="#" onclick="openFile('${esc(g.fileData)}'); return false;">📎 ${esc(g.fileName||'Ver')}</a>`:'<span class="pill pill-muted">—</span>'}</td>
       <td style="font-family:var(--mono); color:var(--warn); font-weight:600;">-${fmt(g.amount)}</td>
       <td class="row-actions">
         <button class="btn btn-ghost btn-sm btn-icon" onclick="editGastoInline('${g.id}')" title="Editar">✎</button>
@@ -2320,7 +2337,7 @@ function renderStaffPagos(){
       <td style="font-family:var(--mono);">${fmt(p.amountPaid)}</td>
       <td>${lastFile?fmtDate(lastFile.date):'<span class="pill pill-muted">—</span>'}</td>
       <td><span class="pill ${statusPill}">${statusLabel}</span></td>
-      <td>${lastFile&&lastFile.fileData?`<a class="filechip" href="${lastFile.fileData}" target="_blank">📎 ${esc(lastFile.fileName||'Ver')}</a>`:'<span class="pill pill-muted">—</span>'}</td>
+      <td>${lastFile&&lastFile.fileData?`<a class="filechip" href="#" onclick="openFile('${esc(lastFile.fileData)}'); return false;">📎 ${esc(lastFile.fileName||'Ver')}</a>`:'<span class="pill pill-muted">—</span>'}</td>
       <td class="row-actions">
         ${p.status!=='pagado'?`<button class="btn btn-primary btn-sm" onclick="openPagoStaffModal('${p.id}')">Pagar</button>`:''}
         ${hasPayments?`<button class="btn btn-ghost btn-sm btn-icon" onclick="editLastPagoStaff('${p.id}')" title="Editar último pago">✎</button><button class="btn btn-danger btn-sm btn-icon" onclick="undoLastPagoStaff('${p.id}')" title="Deshacer último pago">↺</button>`:''}
@@ -2410,8 +2427,8 @@ function renderResumenDetail(){
           Plan mensual: <strong>${fmt(r.planAmount)}</strong>
         </p>
         <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;">
-          ${r.contractFile?`<a class="filechip" href="${r.contractFile}" target="_blank">📎 Contrato</a>`:''}
-          ${(r.otherFiles||[]).map(f=>`<a class="filechip" href="${f.data}" target="_blank">📎 ${esc(f.name)}</a>`).join('')}
+          ${r.contractFile?`<a class="filechip" href="#" onclick="openFile('${esc(r.contractFile)}'); return false;">📎 Contrato</a>`:''}
+          ${(r.otherFiles||[]).map(f=>`<a class="filechip" href="#" onclick="openFile('${esc(f.data)}'); return false;">📎 ${esc(f.name)}</a>`).join('')}
           ${!r.contractFile && !(r.otherFiles||[]).length ? '<span style="font-size:12px; color:var(--ink-soft);">Sin archivos.</span>' : ''}
         </div>
       </div>
@@ -2421,7 +2438,7 @@ function renderResumenDetail(){
       <h3 style="font-size:14.5px; color:var(--navy); margin-bottom:10px;">Contacto de emergencia y familiares</h3>
       <p style="font-size:13px; line-height:1.8;">
         ${esc(r.emergencyName||'—')} (${esc(r.emergencyRelation||'—')}) · ${esc(r.emergencyPhone||'—')}<br>
-        Dirección: ${esc(r.emergencyAddress||'—')} ${r.emergencyFile?`&nbsp; <a class="filechip" href="${r.emergencyFile}" target="_blank">📎 ${esc(r.emergencyFileName||'Ver archivo')}</a>`:''}
+        Dirección: ${esc(r.emergencyAddress||'—')} ${r.emergencyFile?`&nbsp; <a class="filechip" href="#" onclick="openFile('${esc(r.emergencyFile)}'); return false;">📎 ${esc(r.emergencyFileName||'Ver archivo')}</a>`:''}
       </p>
       ${(r.family||[]).length ? `<div style="margin-top:8px; font-size:12.5px; color:var(--ink-soft);">${r.family.map(f=>`${esc(f.name)} (${esc(f.relation)}) — ${esc(f.phone)}`).join('<br>')}</div>` : ''}
 
