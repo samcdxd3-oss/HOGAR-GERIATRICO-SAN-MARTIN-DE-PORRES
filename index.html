@@ -1176,6 +1176,12 @@ function doGoogleLogin(){
   err.style.display='none';
   document.getElementById('authLoginBtn').disabled = true;
   const provider = new firebase.auth.GoogleAuthProvider();
+  // Obliga a Google a pedir siempre confirmación (contraseña, huella, etc.)
+  // en vez de entrar de un clic solo porque el navegador ya "recuerda"
+  // la cuenta. Así, si alguien no autorizado abre la app en un equipo
+  // donde otra persona dejó su cuenta de Google recordada, no puede
+  // entrar sin la confirmación real del dueño de esa cuenta.
+  provider.setCustomParameters({ prompt: 'login' });
   auth.signInWithPopup(provider).catch(e=>{
     document.getElementById('authLoginBtn').disabled = false;
     err.textContent = 'No se pudo iniciar sesión: '+e.message;
