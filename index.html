@@ -1038,6 +1038,12 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
+// Seguridad: la sesión NO se guarda de forma permanente en el dispositivo.
+// Se mantiene solo mientras la pestaña/ventana del navegador siga abierta;
+// al cerrarla (o apagar el celular/PC), hay que volver a iniciar sesión.
+// Así, alguien no autorizado que abra el navegador después no encuentra
+// la app ya conectada.
+auth.setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(e=>console.error('No se pudo configurar la persistencia de sesión', e));
 const db = firebase.firestore();
 const DATA_DOC = db.collection('sistema').doc('datos');
 
