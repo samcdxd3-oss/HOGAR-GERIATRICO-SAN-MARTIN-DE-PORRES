@@ -766,11 +766,11 @@ tr:last-child td{border-bottom:none;}
     <div id="familyMembersList" style="display:flex; flex-direction:column; gap:8px; margin-bottom:10px;"></div>
     <button type="button" class="btn btn-ghost btn-sm" onclick="addFamilyRow()">+ Agregar otro familiar</button>
 
-    <p class="modal-sub">Salud básica</p>
-    <div class="field-row3">
-      <div class="field"><label>Nivel de atención</label><select id="rCareLevel"><option>Básico</option><option>Intermedio</option><option>Intensivo</option></select></div>
-      <div class="field"><label>Profesional a cargo</label><select id="rProfRole"><option value="">— Sin especificar —</option><option>Médico</option><option>Nutricionista</option><option>Asistente social</option><option>Enfermera</option></select></div>
-      <div class="field"><label>Nombre del profesional (opcional)</label><input id="rProfName" type="text" placeholder="Escribe el nombre"></div>
+    <p class="modal-sub">Seguro de salud</p>
+    <div class="field">
+      <label>Tipo de seguro</label>
+      <input id="rInsurance" type="text" list="rInsuranceList" placeholder="Ej: SIS, EsSalud, Seguro policial…">
+      <datalist id="rInsuranceList"></datalist>
     </div>
     <div class="field">
       <label>Historial clínico</label>
@@ -1551,9 +1551,9 @@ async function openResidentModal(id){
   document.getElementById('rEmergencyRelation').value = r?r.emergencyRelation:'';
   document.getElementById('rEmergencyPhone').value = r?r.emergencyPhone:'';
   document.getElementById('rEmergencyAddress').value = r?(r.emergencyAddress||''):'';
-  document.getElementById('rCareLevel').value = r?r.careLevel:'Básico';
-  document.getElementById('rProfRole').value = r?(r.profRole||''):'';
-  document.getElementById('rProfName').value = r?(r.profName||''):'';
+  document.getElementById('rInsurance').value = r?(r.insurance||''):'';
+  const insuranceOpts = Array.from(new Set(['SIS','EsSalud','Seguro policial','Particular','Ninguno', ...DATA.residents.map(x=>x.insurance).filter(Boolean)]));
+  document.getElementById('rInsuranceList').innerHTML = insuranceOpts.map(o=>`<option value="${esc(o)}">`).join('');
   document.getElementById('rContractFile').value='';
   document.getElementById('rOtherFiles').value='';
   document.getElementById('rEmergencyFile').value='';
@@ -1599,7 +1599,9 @@ async function saveResident(){
     emergencyName:document.getElementById('rEmergencyName').value.trim(), emergencyRelation:document.getElementById('rEmergencyRelation').value.trim(),
     emergencyPhone:document.getElementById('rEmergencyPhone').value.trim(), emergencyAddress:document.getElementById('rEmergencyAddress').value.trim(),
     emergencyFile, emergencyFileName, family:collectFamilyMembers(),
-    careLevel:document.getElementById('rCareLevel').value, profRole:document.getElementById('rProfRole').value, profName:document.getElementById('rProfName').value.trim(),
+    insurance: document.getElementById('rInsurance').value.trim(),
+    careLevel: existing ? existing.careLevel : 'Básico',
+    profRole: existing ? existing.profRole : '', profName: existing ? existing.profName : '',
     clinicalHistory: collectHistorialClinico(),
     healthLogs: existing ? (existing.healthLogs||[]) : [], recommendations: existing? existing.recommendations : ''
   };
@@ -2500,8 +2502,7 @@ function renderResumenDetail(){
         <p style="font-size:13px; line-height:1.9;">
           Peso: <strong>${r.peso?r.peso+' kg':'—'}</strong><br>
           Altura: <strong>${r.altura?r.altura+' cm':'—'}</strong><br>
-          Nivel de atención: <strong>${esc(r.careLevel||'—')}</strong><br>
-          Profesional a cargo: <strong>${esc(prof||'Sin asignar')}</strong>
+          Tipo de seguro: <strong>${esc(r.insurance||'—')}</strong>
         </p>
       </div>
       <div class="card">
