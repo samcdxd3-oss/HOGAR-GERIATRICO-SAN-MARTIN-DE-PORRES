@@ -467,7 +467,7 @@ tr:last-child td{border-bottom:none;}
                 </div>
               </div>
               <table>
-                <thead><tr><th>Residente</th><th>Monto</th><th>Pagado</th><th>Comprobantes</th><th>Estado</th><th></th></tr></thead>
+                <thead><tr><th>Residente</th><th>Día de cobro</th><th>Monto</th><th>Pagado</th><th>Último pago</th><th>Deuda acumulada</th><th>Comprobantes</th><th>Estado</th><th></th></tr></thead>
                 <tbody id="cuotasTableBody"></tbody>
               </table>
               <div class="empty-state" id="cuotasEmpty" style="display:none;">No hay residentes activos con cuota este mes.</div>
@@ -1838,6 +1838,24 @@ function ensureCuotasForMonth(){
   saveData(DATA);
 }
 function cuotaStatusFrom(due,paid){ if(paid<=0) return 'pendiente'; if(paid>=due) return 'pagado'; return 'parcial'; }
+
+// El "día de cobro" es el día del mes en que ingresó (o firmó contrato) el
+// residente — así cada mes se sabe exactamente cuándo le toca pagar,
+// aunque el monto se siga generando por mes calendario.
+function billingDay(r){
+  const src = r.contractDate || r.admission;
+  if(!src) return null;
+  const d = new Date(src+'T00:00:00');
+  return isNaN(d) ? null : d.getDate();
+}
+// Suma TODO lo que un residente debe, juntando todos los meses pendientes
+// o parciales (no solo el mes actual), para ver de un vistazo si viene
+// arrastrando deuda de meses anteriores.
+function residentDebtSummary(residentId){
+  const pend = DATA.cuotas.filter(c=>c.residentId===residentId && c.status!=='pagado');
+  const total = pend.reduce((s,c)=> s + (c.amountDue - c.amountPaid), 0);
+  return { months: pend.length, total };
+}
 let pagoFilesDraft = [];
 function renderPagoFilesPreview(){
   const prev=document.getElementById('pagoFilePreview');
@@ -1947,10 +1965,18 @@ function renderCuotas(){
     const filesCell = lastFiles.length
       ? lastFiles.map((f,i)=>`<a class="filechip" href="#" onclick="openFile('${esc(f.data)}'); return false;" title="${esc(f.name)}">📎${lastFiles.length>1?(' '+(i+1)):''}</a>`).join(' ')
       : '<span class="pill pill-muted">—</span>';
+    const bDay = r ? billingDay(r) : null;
+    const debt = r ? residentDebtSummary(r.id) : {months:0,total:0};
+    const debtCell = debt.months>1
+      ? `<span style="color:var(--warn); font-weight:600;">${fmt(debt.total)}</span> <span style="font-size:11px; color:var(--warn);">(${debt.months} meses)</span>`
+      : (debt.total>0 ? fmt(debt.total) : '<span style="color:var(--ok, #1A8A63);">Al día</span>');
     return `<tr>
       <td><strong>${esc(r?r.name:'—')}</strong></td>
+      <td>${bDay?('Día '+bDay):'—'}</td>
       <td style="font-family:var(--mono);">${fmt(c.amountDue)}</td>
       <td style="font-family:var(--mono);">${fmt(c.amountPaid)}</td>
+      <td>${lastPayment?fmtDate(lastPayment.date):'—'}</td>
+      <td>${debtCell}</td>
       <td>${filesCell}</td>
       <td><span class="pill ${statusPill}">${statusLabel}</span></td>
       <td class="row-actions">
