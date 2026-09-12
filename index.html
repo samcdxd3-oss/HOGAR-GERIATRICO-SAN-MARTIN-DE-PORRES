@@ -219,7 +219,8 @@ tr:last-child td{border-bottom:none;}
 .rank-pct{font-family:var(--mono); font-size:11px; color:var(--ink-soft); min-width:48px; text-align:right;}
 
 .filechip{display:inline-flex; align-items:center; gap:6px; font-size:12px; padding:5px 10px; border:1px solid var(--line-strong); border-radius:20px; color:var(--teal-deep); text-decoration:none; background:var(--ice);}
-.file-field{border:1px dashed var(--line-strong); border-radius:5px; padding:10px 12px; background:var(--card);}
+.file-field{border:1px dashed var(--line-strong); border-radius:5px; padding:10px 12px; background:var(--card); transition:background .15s, border-color .15s;}
+.file-field.dragover{border-color:var(--teal-deep); background:var(--ice);}
 
 .badge-count{background:var(--warn); color:#fff; font-family:var(--mono); font-size:10px; padding:1px 6px; border-radius:10px; margin-left:auto;}
 
@@ -466,7 +467,7 @@ tr:last-child td{border-bottom:none;}
                 </div>
               </div>
               <table>
-                <thead><tr><th>Residente</th><th>Monto</th><th>Pagado</th><th>Estado</th><th></th></tr></thead>
+                <thead><tr><th>Residente</th><th>Monto</th><th>Pagado</th><th>Comprobantes</th><th>Estado</th><th></th></tr></thead>
                 <tbody id="cuotasTableBody"></tbody>
               </table>
               <div class="empty-state" id="cuotasEmpty" style="display:none;">No hay residentes activos con cuota este mes.</div>
@@ -846,7 +847,11 @@ tr:last-child td{border-bottom:none;}
       <div class="field"><label>Fecha *</label><input id="pagoFecha" type="date"></div>
     </div>
     <div class="field"><label>Método de pago</label><select id="pagoMetodo"><option>Efectivo</option><option>Transferencia</option><option>Yape/Plin</option><option>Tarjeta</option></select></div>
-    <div class="field file-field"><label>Comprobante (opcional)</label><input id="pagoFile" type="file" accept="image/*,application/pdf"></div>
+    <div class="field file-field">
+      <label>Comprobante (opcional, puedes adjuntar varios — arrastra los archivos aquí)</label>
+      <input id="pagoFile" type="file" accept="image/*,application/pdf" multiple>
+      <div id="pagoFilePreview" style="margin-top:8px; display:flex; flex-wrap:wrap; gap:6px;"></div>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-ghost btn-sm" onclick="closeModal('modalPago')">Cancelar</button>
       <button class="btn btn-primary btn-sm" onclick="savePago()">Confirmar pago</button>
@@ -1487,6 +1492,27 @@ function collectHistorialClinico(){
   return Array.from(document.querySelectorAll('#historialClinicoList .historial-cell')).map(i=>i.value.trim()).filter(v=>v);
 }
 
+// Arrastrar y soltar archivos: funciona en TODOS los campos de subir
+// archivo de la app (contrato, comprobantes, boletas, etc.), sin tener
+// que tocarlos uno por uno. Si el campo acepta varios archivos y ya
+// tenía algunos elegidos, los conserva y agrega los nuevos.
+document.querySelectorAll('.file-field').forEach(field=>{
+  const input = field.querySelector('input[type="file"]');
+  if(!input) return;
+  field.addEventListener('dragover', e=>{ e.preventDefault(); field.classList.add('dragover'); });
+  field.addEventListener('dragleave', ()=> field.classList.remove('dragover'));
+  field.addEventListener('drop', e=>{
+    e.preventDefault();
+    field.classList.remove('dragover');
+    if(!e.dataTransfer.files || !e.dataTransfer.files.length) return;
+    const dt = new DataTransfer();
+    if(input.multiple){ Array.from(input.files).forEach(f=>dt.items.add(f)); }
+    Array.from(e.dataTransfer.files).forEach(f=>dt.items.add(f));
+    input.files = dt.files;
+    input.dispatchEvent(new Event('change', {bubbles:true}));
+  });
+});
+
 let residentOtherFilesDraft = [];
 function renderOtherFilesPreview(){
   const otherPreview=document.getElementById('rOtherFilesPreview');
@@ -1794,6 +1820,24 @@ function ensureCuotasForMonth(){
   saveData(DATA);
 }
 function cuotaStatusFrom(due,paid){ if(paid<=0) return 'pendiente'; if(paid>=due) return 'pagado'; return 'parcial'; }
+let pagoFilesDraft = [];
+function renderPagoFilesPreview(){
+  const prev=document.getElementById('pagoFilePreview');
+  prev.innerHTML = pagoFilesDraft.length ? pagoFilesDraft.map((f,i)=>`
+    <span class="filechip" style="gap:8px;">
+      <a href="#" onclick="openFile('${esc(f.data)}'); return false;" style="color:inherit; text-decoration:none;">📎 ${esc(f.name)}</a>
+      <button type="button" onclick="removePagoFileDraft(${i})" style="all:unset; cursor:pointer; color:var(--warn); font-weight:700;">✕</button>
+    </span>`).join('') : '<span style="font-size:12px; color:var(--ink-soft);">Sin comprobantes adjuntos.</span>';
+}
+function removePagoFileDraft(idx){ pagoFilesDraft.splice(idx,1); renderPagoFilesPreview(); }
+document.getElementById('pagoFile').addEventListener('change', async function(){
+  if(this.files.length){
+    const newOnes = await Promise.all(Array.from(this.files).map(async f=>({name:f.name, data: await fileToDataURL(f)})));
+    pagoFilesDraft = pagoFilesDraft.concat(newOnes);
+    this.value='';
+    renderPagoFilesPreview();
+  }
+});
 function openPagoModal(cuotaId){
   const c=DATA.cuotas.find(x=>x.id===cuotaId);
   if(!c) return;
@@ -1806,6 +1850,8 @@ function openPagoModal(cuotaId){
   document.getElementById('pagoFecha').value = todayISO();
   document.getElementById('pagoMetodo').value='Efectivo';
   document.getElementById('pagoFile').value='';
+  pagoFilesDraft = [];
+  renderPagoFilesPreview();
   openModal('modalPago');
 }
 function editLastPago(cuotaId){
@@ -1820,6 +1866,10 @@ function editLastPago(cuotaId){
   document.getElementById('pagoFecha').value=last.date;
   document.getElementById('pagoMetodo').value=last.method||'Efectivo';
   document.getElementById('pagoFile').value='';
+  // Compatibilidad: pagos viejos guardaban un solo archivo (fileData/fileName).
+  pagoFilesDraft = (last.files && last.files.length) ? last.files.slice()
+    : (last.fileData ? [{name:last.fileName||'Comprobante', data:last.fileData}] : []);
+  renderPagoFilesPreview();
   openModal('modalPago');
 }
 async function undoLastPago(cuotaId){
@@ -1838,17 +1888,15 @@ async function savePago(){
   if(!c) return;
   const monto=Number(document.getElementById('pagoMonto').value);
   if(!monto||monto<=0){ showToast('Ingresa un monto válido'); return; }
-  let fileData=null, fileName=null;
-  const fi=document.getElementById('pagoFile');
-  if(fi.files[0]){ fileData=await fileToDataURL(fi.files[0]); fileName=fi.files[0].name; }
+  const files = pagoFilesDraft.slice();
   const editMode = document.getElementById('pagoEditMode').value==='1';
   if(editMode && c.payments.length>0){
     const last=c.payments[c.payments.length-1];
     c.amountPaid -= last.amount;
-    c.payments[c.payments.length-1] = {date:document.getElementById('pagoFecha').value||todayISO(), amount:monto, method:document.getElementById('pagoMetodo').value, fileData:fileData||last.fileData, fileName:fileName||last.fileName};
+    c.payments[c.payments.length-1] = {date:document.getElementById('pagoFecha').value||todayISO(), amount:monto, method:document.getElementById('pagoMetodo').value, files};
     c.amountPaid += monto;
   } else {
-    c.payments.push({date:document.getElementById('pagoFecha').value||todayISO(), amount:monto, method:document.getElementById('pagoMetodo').value, fileData, fileName});
+    c.payments.push({date:document.getElementById('pagoFecha').value||todayISO(), amount:monto, method:document.getElementById('pagoMetodo').value, files});
     c.amountPaid += monto;
   }
   c.status = cuotaStatusFrom(c.amountDue, c.amountPaid);
@@ -1876,10 +1924,16 @@ function renderCuotas(){
     const statusPill = c.status==='pagado'?'pill-ok':(c.status==='parcial'?'pill-teal':'pill-warn');
     const statusLabel = c.status==='pagado'?'Pagado':(c.status==='parcial'?'Parcial':'Pendiente');
     const hasPayments = c.payments.length>0;
+    const lastPayment = hasPayments ? c.payments[c.payments.length-1] : null;
+    const lastFiles = lastPayment ? (lastPayment.files && lastPayment.files.length ? lastPayment.files : (lastPayment.fileData ? [{name:lastPayment.fileName||'Comprobante', data:lastPayment.fileData}] : [])) : [];
+    const filesCell = lastFiles.length
+      ? lastFiles.map((f,i)=>`<a class="filechip" href="#" onclick="openFile('${esc(f.data)}'); return false;" title="${esc(f.name)}">📎${lastFiles.length>1?(' '+(i+1)):''}</a>`).join(' ')
+      : '<span class="pill pill-muted">—</span>';
     return `<tr>
       <td><strong>${esc(r?r.name:'—')}</strong></td>
       <td style="font-family:var(--mono);">${fmt(c.amountDue)}</td>
       <td style="font-family:var(--mono);">${fmt(c.amountPaid)}</td>
+      <td>${filesCell}</td>
       <td><span class="pill ${statusPill}">${statusLabel}</span></td>
       <td class="row-actions">
         ${c.status!=='pagado'?`<button class="btn btn-primary btn-sm" onclick="openPagoModal('${c.id}')">Registrar pago</button>`:''}
@@ -2494,7 +2548,36 @@ function renderResumenDetail(){
       <p style="font-size:11.5px; font-weight:600; color:var(--teal-deep); margin-bottom:8px;">HISTORIAL DE CUOTAS</p>
       ${cuotas.length ? `<div class="table-wrap"><table><thead><tr><th>Mes</th><th>Monto</th><th>Pagado</th><th>Estado</th></tr></thead><tbody>${cuotas.map(c=>`<tr><td>${monthLabel(c.monthKey)}</td><td>${fmt(c.amountDue)}</td><td>${fmt(c.amountPaid)}</td><td><span class="pill ${c.status==='pagado'?'pill-ok':(c.status==='parcial'?'pill-teal':'pill-warn')}">${c.status==='pagado'?'Pagado':(c.status==='parcial'?'Parcial':'Pendiente')}</span></td></tr>`).join('')}</tbody></table></div>` : '<p style="font-size:12px; color:var(--ink-soft);">Sin cuotas registradas todavía.</p>'}
     </div>
+
+    <div class="card" style="margin-top:16px;">
+      <p style="font-size:11.5px; font-weight:600; color:var(--teal-deep); margin-bottom:8px;">📎 TODOS LOS ARCHIVOS Y COMPROBANTES</p>
+      ${(() => {
+        const files = collectResidentFiles(r, cuotas);
+        if(!files.length) return '<p style="font-size:12px; color:var(--ink-soft);">Este residente no tiene archivos adjuntos todavía.</p>';
+        return `<div class="table-wrap"><table><thead><tr><th>Tipo</th><th>Archivo</th><th>Fecha</th><th></th></tr></thead><tbody>${
+          files.map(f=>`<tr><td>${esc(f.type)}</td><td>${esc(f.name)}</td><td>${f.date?fmtDate(f.date):'—'}</td><td><a class="filechip" href="#" onclick="openFile('${esc(f.data)}'); return false;">📎 Ver</a></td></tr>`).join('')
+        }</tbody></table></div>`;
+      })()}
+    </div>
   `;
+}
+// Junta en una sola lista, ordenada de más reciente a más antiguo, TODOS los
+// archivos subidos para un residente: contrato, otros documentos, archivo
+// de contacto de emergencia, y todos los comprobantes de pago de cada mes.
+// Útil para imprimir o mostrar como evidencia completa de un residente.
+function collectResidentFiles(r, cuotas){
+  const items = [];
+  if(r.contractFile) items.push({type:'Contrato firmado', name:'Contrato', data:r.contractFile, date:r.contractDate||null});
+  (r.otherFiles||[]).forEach(f=> items.push({type:'Otro documento', name:f.name, data:f.data, date:null}));
+  if(r.emergencyFile) items.push({type:'Contacto de emergencia', name:r.emergencyFileName||'Archivo', data:r.emergencyFile, date:null});
+  (cuotas||[]).forEach(c=>{
+    (c.payments||[]).forEach(p=>{
+      const files = (p.files && p.files.length) ? p.files : (p.fileData ? [{name:p.fileName||'Comprobante', data:p.fileData}] : []);
+      files.forEach(f=> items.push({type:'Comprobante de pago — '+monthLabel(c.monthKey), name:f.name, data:f.data, date:p.date}));
+    });
+  });
+  items.sort((a,b)=> (b.date||'').localeCompare(a.date||''));
+  return items;
 }
 function renderComunicaciones(){ renderResumenList(); renderResumenDetail(); }
 
