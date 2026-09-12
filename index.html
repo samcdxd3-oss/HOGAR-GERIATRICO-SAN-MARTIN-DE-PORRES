@@ -850,7 +850,10 @@ tr:last-child td{border-bottom:none;}
       <div class="field"><label>Monto a abonar (S/) *</label><input id="pagoMonto" type="number" min="0" step="0.01"></div>
       <div class="field"><label>Fecha *</label><input id="pagoFecha" type="date"></div>
     </div>
-    <div class="field"><label>Método de pago</label><select id="pagoMetodo"><option>Efectivo</option><option>Transferencia</option><option>Yape/Plin</option><option>Tarjeta</option></select></div>
+    <div class="field-row">
+      <div class="field"><label>Método de pago</label><select id="pagoMetodo"><option>Efectivo</option><option>Transferencia</option><option>Yape/Plin</option><option>Tarjeta</option></select></div>
+      <div class="field"><label>Pagado por (opcional)</label><input id="pagoPor" type="text" placeholder="Nombre de quien pagó"></div>
+    </div>
     <div class="field file-field">
       <label>Comprobante (opcional, puedes adjuntar varios — arrastra los archivos aquí)</label>
       <input id="pagoFile" type="file" accept="image/*,application/pdf" multiple>
@@ -1849,6 +1852,14 @@ function scrollToId(id){
   const el = document.getElementById(id);
   if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
 }
+// Expande/colapsa el historial de pagos de una cuota al hacer clic en su
+// fila (sin interferir con los botones de acción que ya tiene la fila).
+function toggleCuotaHistory(cuotaId, evt){
+  if(evt && evt.target.closest('button, a, select')) return;
+  const row = document.getElementById('cuotaHist-'+cuotaId);
+  if(!row) return;
+  row.style.display = row.style.display==='none' ? '' : 'none';
+}
 
 // El "día de cobro" es el día del mes en que ingresó (o firmó contrato) el
 // residente — así cada mes se sabe exactamente cuándo le toca pagar,
@@ -1896,6 +1907,7 @@ function openPagoModal(cuotaId){
   document.getElementById('pagoMonto').value = restante || '';
   document.getElementById('pagoFecha').value = todayISO();
   document.getElementById('pagoMetodo').value='Efectivo';
+  document.getElementById('pagoPor').value='';
   document.getElementById('pagoFile').value='';
   pagoFilesDraft = [];
   renderPagoFilesPreview();
@@ -1912,6 +1924,7 @@ function editLastPago(cuotaId){
   document.getElementById('pagoMonto').value=last.amount;
   document.getElementById('pagoFecha').value=last.date;
   document.getElementById('pagoMetodo').value=last.method||'Efectivo';
+  document.getElementById('pagoPor').value=last.pagadoPor||'';
   document.getElementById('pagoFile').value='';
   // Compatibilidad: pagos viejos guardaban un solo archivo (fileData/fileName).
   pagoFilesDraft = (last.files && last.files.length) ? last.files.slice()
@@ -1936,14 +1949,15 @@ async function savePago(){
   const monto=Number(document.getElementById('pagoMonto').value);
   if(!monto||monto<=0){ showToast('Ingresa un monto válido'); return; }
   const files = pagoFilesDraft.slice();
+  const pagadoPor = document.getElementById('pagoPor').value.trim();
   const editMode = document.getElementById('pagoEditMode').value==='1';
   if(editMode && c.payments.length>0){
     const last=c.payments[c.payments.length-1];
     c.amountPaid -= last.amount;
-    c.payments[c.payments.length-1] = {date:document.getElementById('pagoFecha').value||todayISO(), amount:monto, method:document.getElementById('pagoMetodo').value, files};
+    c.payments[c.payments.length-1] = {date:document.getElementById('pagoFecha').value||todayISO(), amount:monto, method:document.getElementById('pagoMetodo').value, pagadoPor, files};
     c.amountPaid += monto;
   } else {
-    c.payments.push({date:document.getElementById('pagoFecha').value||todayISO(), amount:monto, method:document.getElementById('pagoMetodo').value, files});
+    c.payments.push({date:document.getElementById('pagoFecha').value||todayISO(), amount:monto, method:document.getElementById('pagoMetodo').value, pagadoPor, files});
     c.amountPaid += monto;
   }
   c.status = cuotaStatusFrom(c.amountDue, c.amountPaid);
@@ -1981,7 +1995,17 @@ function renderCuotas(){
     const debtCell = debt.months>1
       ? `<span style="color:var(--warn); font-weight:600;">${fmt(debt.total)}</span> <span style="font-size:11px; color:var(--warn);">(${debt.months} meses)</span>`
       : (debt.total>0 ? fmt(debt.total) : '<span style="color:var(--ok, #1A8A63);">Al día</span>');
-    return `<tr>
+    const histRows = (c.payments||[]).map(p=>{
+      const pFiles = (p.files && p.files.length) ? p.files : (p.fileData ? [{name:p.fileName||'Comprobante', data:p.fileData}] : []);
+      const pFilesCell = pFiles.length
+        ? pFiles.map((f,i)=>`<a class="filechip" href="#" onclick="openFile('${esc(f.data)}'); return false;" title="${esc(f.name)}">📎${pFiles.length>1?(' '+(i+1)):''}</a>`).join(' ')
+        : '—';
+      return `<tr><td>${fmtDate(p.date)}</td><td>${fmt(p.amount)}</td><td>${esc(p.method||'—')}</td><td>${esc(p.pagadoPor||'—')}</td><td>${pFilesCell}</td></tr>`;
+    }).join('');
+    const histTable = c.payments.length
+      ? `<table style="width:100%;"><thead><tr><th>Fecha</th><th>Monto</th><th>Método</th><th>Pagado por</th><th>Comprobante</th></tr></thead><tbody>${histRows}</tbody></table>`
+      : '<p style="font-size:12px; color:var(--ink-soft); margin:0;">Sin pagos registrados todavía para esta cuota.</p>';
+    return `<tr onclick="toggleCuotaHistory('${c.id}', event)" style="cursor:pointer;" title="Clic para ver el historial de pagos">
       <td><strong>${esc(r?r.name:'—')}</strong></td>
       <td>${bDay?('Día '+bDay):'—'}</td>
       <td style="font-family:var(--mono);">${fmt(c.amountDue)}</td>
@@ -1993,6 +2017,12 @@ function renderCuotas(){
       <td class="row-actions">
         ${c.status!=='pagado'?`<button class="btn btn-primary btn-sm" onclick="openPagoModal('${c.id}')">Registrar pago</button>`:''}
         ${hasPayments?`<button class="btn btn-ghost btn-sm btn-icon" onclick="editLastPago('${c.id}')" title="Editar último pago">✎</button><button class="btn btn-danger btn-sm btn-icon" onclick="undoLastPago('${c.id}')" title="Deshacer último pago">↺</button>`:''}
+      </td>
+    </tr>
+    <tr id="cuotaHist-${c.id}" style="display:none;">
+      <td colspan="9" style="background:var(--bg-deep); padding:14px 16px;">
+        <p style="font-size:11px; font-weight:600; color:var(--teal-deep); margin-bottom:8px;">HISTORIAL DE PAGOS — ${esc(r?r.name:'—')}</p>
+        ${histTable}
       </td>
     </tr>`;
   }).join('');
