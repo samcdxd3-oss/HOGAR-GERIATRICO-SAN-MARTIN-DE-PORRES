@@ -868,9 +868,13 @@ tr:last-child td{border-bottom:none;}
         <input id="invCategory" type="text" list="invCategoryList" placeholder="Ej: Medicamentos">
         <datalist id="invCategoryList"></datalist>
       </div>
-      <div class="field"><label>Descripción</label><input id="invUnit" type="text" placeholder="Ej: cajas de 50 unidades, guantes talla M…"></div>
+      <div class="field">
+        <label>Unidad</label>
+        <input id="invUnit" type="text" list="invUnitList" placeholder="Ej: unidades, cajas…">
+        <datalist id="invUnitList"></datalist>
+      </div>
     </div>
-    <div class="field"><label>Cantidad que se está trayendo *</label><input id="invQty" type="number" min="0"></div>
+    <div class="field"><label>Cantidad *</label><input id="invQty" type="number" min="0"></div>
     <div class="modal-actions">
       <button class="btn btn-ghost btn-sm" onclick="closeModal('modalInv')">Cancelar</button>
       <button class="btn btn-primary btn-sm" onclick="saveInventory()">Guardar ítem</button>
@@ -2107,6 +2111,7 @@ function renderFinanzas(){ renderCuotas(); renderGastos(); renderGeneral(); }
 
 /* ============ INVENTARIO ============ */
 const DEFAULT_CATEGORIES_INV = ['Medicamentos','Suministros médicos','Alimentación','Equipamiento','Otros'];
+const DEFAULT_UNITS_INV = ['unidad','caja','paquete','frasco','litro','kg','ampolla','rollo','par','bolsa'];
 const DEFAULT_MIN_STOCK = 5; // umbral interno para la alerta de "Bajo stock"; no se le pide al personal.
 function openInventoryModal(id){
   document.getElementById('invModalTitle').textContent = id?'Editar ítem':'Nuevo ítem';
@@ -2116,10 +2121,12 @@ function openInventoryModal(id){
   document.getElementById('invCategory').value = it?it.category:'';
   document.getElementById('invUnit').value = it?it.unit:'';
   document.getElementById('invQty').value = it?it.qty:'';
-  // Junta las categorías ya usadas + las básicas, para sugerirlas mientras
-  // se escribe, sin impedir escribir una categoría nueva.
+  // Junta las categorías/unidades ya usadas + las básicas, para sugerirlas
+  // mientras se escribe, sin impedir escribir una nueva.
   const cats = Array.from(new Set([...DEFAULT_CATEGORIES_INV, ...DATA.inventory.map(i=>i.category).filter(Boolean)]));
   document.getElementById('invCategoryList').innerHTML = cats.map(c=>`<option value="${esc(c)}">`).join('');
+  const units = Array.from(new Set([...DEFAULT_UNITS_INV, ...DATA.inventory.map(i=>i.unit).filter(Boolean)]));
+  document.getElementById('invUnitList').innerHTML = units.map(u=>`<option value="${esc(u)}">`).join('');
   openModal('modalInv');
 }
 function saveInventory(){
