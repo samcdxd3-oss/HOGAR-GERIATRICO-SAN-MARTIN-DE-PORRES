@@ -1514,6 +1514,18 @@ document.querySelectorAll('.file-field').forEach(field=>{
 });
 
 let residentOtherFilesDraft = [];
+let contractFileCleared = false;
+let emergencyFileCleared = false;
+function clearContractFileDraft(){
+  contractFileCleared = true;
+  document.getElementById('rContractFile').value='';
+  document.getElementById('rContractFilePreview').innerHTML = '<span style="font-size:12px; color:var(--ink-soft);">Sin archivo adjunto todavía.</span>';
+}
+function clearEmergencyFileDraft(){
+  emergencyFileCleared = true;
+  document.getElementById('rEmergencyFile').value='';
+  document.getElementById('rEmergencyFilePreview').innerHTML = '<span style="font-size:12px; color:var(--ink-soft);">Sin archivo adjunto.</span>';
+}
 function renderOtherFilesPreview(){
   const otherPreview=document.getElementById('rOtherFilesPreview');
   otherPreview.innerHTML = residentOtherFilesDraft.length ? residentOtherFilesDraft.map((f,i)=>`
@@ -1560,9 +1572,11 @@ async function openResidentModal(id){
   residentOtherFilesDraft = (r && r.otherFiles) ? [...r.otherFiles] : [];
   renderOtherFilesPreview();
   const preview=document.getElementById('rContractFilePreview');
-  preview.innerHTML = (r && r.contractFile) ? `<a class="filechip" href="#" onclick="openFile('${esc(r.contractFile)}'); return false;">📎 ${esc(r.contractFileName||'Ver contrato archivado')}</a>` : '<span style="font-size:12px; color:var(--ink-soft);">Sin archivo adjunto todavía.</span>';
+  contractFileCleared = false;
+  preview.innerHTML = (r && r.contractFile) ? `<span class="filechip" style="gap:8px;"><a href="#" onclick="openFile('${esc(r.contractFile)}'); return false;" style="color:inherit; text-decoration:none;">📎 ${esc(r.contractFileName||'Ver contrato archivado')}</a><button type="button" onclick="clearContractFileDraft()" style="all:unset; cursor:pointer; color:var(--warn); font-weight:700;">✕</button></span>` : '<span style="font-size:12px; color:var(--ink-soft);">Sin archivo adjunto todavía.</span>';
   const emgPreview=document.getElementById('rEmergencyFilePreview');
-  emgPreview.innerHTML = (r && r.emergencyFile) ? `<a class="filechip" href="#" onclick="openFile('${esc(r.emergencyFile)}'); return false;">📎 ${esc(r.emergencyFileName||'Ver archivo')}</a>` : '<span style="font-size:12px; color:var(--ink-soft);">Sin archivo adjunto.</span>';
+  emergencyFileCleared = false;
+  emgPreview.innerHTML = (r && r.emergencyFile) ? `<span class="filechip" style="gap:8px;"><a href="#" onclick="openFile('${esc(r.emergencyFile)}'); return false;" style="color:inherit; text-decoration:none;">📎 ${esc(r.emergencyFileName||'Ver archivo')}</a><button type="button" onclick="clearEmergencyFileDraft()" style="all:unset; cursor:pointer; color:var(--warn); font-weight:700;">✕</button></span>` : '<span style="font-size:12px; color:var(--ink-soft);">Sin archivo adjunto.</span>';
   const famList=document.getElementById('familyMembersList');
   famList.innerHTML='';
   const fams = (r && r.family && r.family.length) ? r.family : [{}];
@@ -1582,6 +1596,7 @@ async function saveResident(){
   let contractFileName = existing ? existing.contractFileName : null;
   const fileInput=document.getElementById('rContractFile');
   if(fileInput.files[0]){ contractFile = await fileToDataURL(fileInput.files[0]); contractFileName = fileInput.files[0].name; }
+  else if(contractFileCleared){ contractFile = null; contractFileName = null; }
 
   const otherFiles = residentOtherFilesDraft;
 
@@ -1589,6 +1604,7 @@ async function saveResident(){
   let emergencyFileName = existing ? existing.emergencyFileName : null;
   const emgInput=document.getElementById('rEmergencyFile');
   if(emgInput.files[0]){ emergencyFile = await fileToDataURL(emgInput.files[0]); emergencyFileName = emgInput.files[0].name; }
+  else if(emergencyFileCleared){ emergencyFile = null; emergencyFileName = null; }
 
   const obj = {
     id: id||uid(), name, dni:document.getElementById('rDni').value.trim(), birth:document.getElementById('rBirth').value,
