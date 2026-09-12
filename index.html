@@ -594,7 +594,7 @@ tr:last-child td{border-bottom:none;}
           </div>
           <div class="card table-wrap">
             <table>
-              <thead><tr><th>Artículo</th><th>Categoría</th><th>Cantidad</th><th>Stock mínimo</th><th>Estado</th><th></th></tr></thead>
+              <thead><tr><th>Artículo</th><th>Categoría</th><th>Cantidad</th><th>Estado</th><th></th></tr></thead>
               <tbody id="invTableBody"></tbody>
             </table>
             <div class="empty-state" id="invEmpty" style="display:none;">No hay ítems en el inventario.</div>
@@ -863,13 +863,14 @@ tr:last-child td{border-bottom:none;}
     <input type="hidden" id="invId">
     <div class="field"><label>Nombre del artículo *</label><input id="invName" type="text"></div>
     <div class="field-row">
-      <div class="field"><label>Categoría</label><select id="invCategory"><option>Medicamentos</option><option>Suministros médicos</option><option>Alimentación</option><option>Equipamiento</option><option>Otros</option></select></div>
-      <div class="field"><label>Unidad</label><input id="invUnit" type="text" placeholder="cajas, litros…"></div>
+      <div class="field">
+        <label>Categoría</label>
+        <input id="invCategory" type="text" list="invCategoryList" placeholder="Ej: Medicamentos">
+        <datalist id="invCategoryList"></datalist>
+      </div>
+      <div class="field"><label>Descripción</label><input id="invUnit" type="text" placeholder="Ej: cajas de 50 unidades, guantes talla M…"></div>
     </div>
-    <div class="field-row">
-      <div class="field"><label>Cantidad inicial *</label><input id="invQty" type="number" min="0"></div>
-      <div class="field"><label>Stock mínimo</label><input id="invMin" type="number" min="0" value="10"></div>
-    </div>
+    <div class="field"><label>Cantidad que se está trayendo *</label><input id="invQty" type="number" min="0"></div>
     <div class="modal-actions">
       <button class="btn btn-ghost btn-sm" onclick="closeModal('modalInv')">Cancelar</button>
       <button class="btn btn-primary btn-sm" onclick="saveInventory()">Guardar ítem</button>
@@ -2105,22 +2106,34 @@ function renderGeneral(){
 function renderFinanzas(){ renderCuotas(); renderGastos(); renderGeneral(); }
 
 /* ============ INVENTARIO ============ */
+const DEFAULT_CATEGORIES_INV = ['Medicamentos','Suministros médicos','Alimentación','Equipamiento','Otros'];
+const DEFAULT_MIN_STOCK = 5; // umbral interno para la alerta de "Bajo stock"; no se le pide al personal.
 function openInventoryModal(id){
   document.getElementById('invModalTitle').textContent = id?'Editar ítem':'Nuevo ítem';
   document.getElementById('invId').value=id||'';
   const it = id ? DATA.inventory.find(x=>x.id===id) : null;
   document.getElementById('invName').value = it?it.name:'';
-  document.getElementById('invCategory').value = it?it.category:'Medicamentos';
+  document.getElementById('invCategory').value = it?it.category:'';
   document.getElementById('invUnit').value = it?it.unit:'';
   document.getElementById('invQty').value = it?it.qty:'';
-  document.getElementById('invMin').value = it?it.min:10;
+  // Junta las categorías ya usadas + las básicas, para sugerirlas mientras
+  // se escribe, sin impedir escribir una categoría nueva.
+  const cats = Array.from(new Set([...DEFAULT_CATEGORIES_INV, ...DATA.inventory.map(i=>i.category).filter(Boolean)]));
+  document.getElementById('invCategoryList').innerHTML = cats.map(c=>`<option value="${esc(c)}">`).join('');
   openModal('modalInv');
 }
 function saveInventory(){
   const name=document.getElementById('invName').value.trim();
   if(!name){ showToast('El nombre es obligatorio'); return; }
   const id=document.getElementById('invId').value;
-  const obj={id:id||uid(), name, category:document.getElementById('invCategory').value, unit:document.getElementById('invUnit').value.trim()||'unidades', qty:Number(document.getElementById('invQty').value)||0, min:Number(document.getElementById('invMin').value)||0};
+  const existing = id ? DATA.inventory.find(i=>i.id===id) : null;
+  const obj={
+    id:id||uid(), name,
+    category:document.getElementById('invCategory').value.trim()||'Otros',
+    unit:document.getElementById('invUnit').value.trim()||'unidades',
+    qty:Number(document.getElementById('invQty').value)||0,
+    min: existing ? existing.min : DEFAULT_MIN_STOCK
+  };
   if(id){ DATA.inventory = DATA.inventory.map(i=>i.id===id?obj:i); } else { DATA.inventory.push(obj); }
   saveData(DATA); closeModal('modalInv'); showToast('Ítem guardado'); renderAll();
 }
@@ -2138,7 +2151,6 @@ function renderInvStock(){
       <td><strong>${esc(it.name)}</strong></td>
       <td>${esc(it.category)}</td>
       <td>${it.qty} ${esc(it.unit)}</td>
-      <td>${it.min} ${esc(it.unit)}</td>
       <td><span class="pill ${low?'pill-warn':'pill-ok'}">${low?'Bajo stock':'Suficiente'}</span></td>
       <td class="row-actions">
         <button class="btn btn-ghost btn-sm btn-icon" onclick="openInventoryModal('${it.id}')" title="Editar">✎</button>
@@ -2555,7 +2567,7 @@ function openDrilldown(kind){
   else if(kind==='stock'){
     title='Ítems con bajo stock';
     const rows=DATA.inventory.filter(i=>i.qty<=i.min);
-    rowsHTML = rows.length ? `<div class="table-wrap"><table><thead><tr><th>Artículo</th><th>Categoría</th><th>Actual</th><th>Mínimo</th></tr></thead><tbody>${rows.map(i=>`<tr><td>${esc(i.name)}</td><td>${esc(i.category)}</td><td style="color:var(--warn); font-weight:600;">${i.qty} ${esc(i.unit)}</td><td>${i.min} ${esc(i.unit)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="empty-state">Todo el inventario está en niveles adecuados.</p>';
+    rowsHTML = rows.length ? `<div class="table-wrap"><table><thead><tr><th>Artículo</th><th>Categoría</th><th>Cantidad actual</th></tr></thead><tbody>${rows.map(i=>`<tr><td>${esc(i.name)}</td><td>${esc(i.category)}</td><td style="color:var(--warn); font-weight:600;">${i.qty} ${esc(i.unit)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="empty-state">Todo el inventario está en niveles adecuados.</p>';
   }
   document.getElementById('drilldownTitle').textContent=title;
   document.getElementById('drilldownBody').innerHTML=rowsHTML;
