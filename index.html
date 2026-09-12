@@ -458,25 +458,29 @@ tr:last-child td{border-bottom:none;}
             <div class="stat-card"><span class="label">Cobrado</span><span class="value ok" id="cuotasTotalCobrado">S/ 0</span></div>
             <div class="stat-card warn-top"><span class="label">Pendiente</span><span class="value warn" id="cuotasTotalPendiente">S/ 0</span></div>
           </div>
-          <div class="two-col-grid">
-            <div class="card table-wrap">
-              <div class="section-head" style="margin-bottom:14px;">
-                <h2 style="font-size:16px;">Cuotas del mes — <span id="cuotasMesLabel2">—</span></h2>
+          <div class="card table-wrap" id="cuotasTablaAnchor">
+            <div class="section-head" style="margin-bottom:14px;">
+              <h2 style="font-size:16px;">Cuotas del mes — <span id="cuotasMesLabel2">—</span></h2>
+              <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <button type="button" class="btn btn-ghost btn-sm" onclick="scrollToId('cuotasGraficaAnchor')">📊 Ir a la gráfica</button>
                 <div class="search-bar" style="margin:0;">
                   <select id="cuotasFilter" onchange="renderCuotas()"><option value="">Todos los estados</option><option value="pagado">Pagado</option><option value="parcial">Parcial</option><option value="pendiente">Pendiente</option></select>
                 </div>
               </div>
-              <table>
-                <thead><tr><th>Residente</th><th>Día de cobro</th><th>Monto</th><th>Pagado</th><th>Último pago</th><th>Deuda acumulada</th><th>Comprobantes</th><th>Estado</th><th></th></tr></thead>
-                <tbody id="cuotasTableBody"></tbody>
-              </table>
-              <div class="empty-state" id="cuotasEmpty" style="display:none;">No hay residentes activos con cuota este mes.</div>
             </div>
-            <div class="card chart-card">
-              <h3>Estado de cobranza</h3>
-              <p class="desc">Distribución de residentes por estado de pago.</p>
-              <div class="chart-wrap"><canvas id="chartCuotasEstado"></canvas></div>
+            <table>
+              <thead><tr><th>Residente</th><th>Día de cobro</th><th>Monto</th><th>Pagado</th><th>Último pago</th><th>Deuda acumulada</th><th>Comprobantes</th><th>Estado</th><th></th></tr></thead>
+              <tbody id="cuotasTableBody"></tbody>
+            </table>
+            <div class="empty-state" id="cuotasEmpty" style="display:none;">No hay residentes activos con cuota este mes.</div>
+          </div>
+          <div class="card chart-card" id="cuotasGraficaAnchor" style="margin-top:16px;">
+            <div class="section-head" style="margin-bottom:4px;">
+              <h3 style="margin:0;">Estado de cobranza</h3>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="scrollToId('cuotasTablaAnchor')">⬆ Volver a la tabla</button>
             </div>
+            <p class="desc">Distribución de residentes por estado de pago.</p>
+            <div class="chart-wrap"><canvas id="chartCuotasEstado"></canvas></div>
           </div>
         </div>
 
@@ -1838,6 +1842,13 @@ function ensureCuotasForMonth(){
   saveData(DATA);
 }
 function cuotaStatusFrom(due,paid){ if(paid<=0) return 'pendiente'; if(paid>=due) return 'pagado'; return 'parcial'; }
+
+// Salto suave entre la tabla y la gráfica (u otros bloques), para las
+// burbujas "Ir a la gráfica" / "Volver a la tabla".
+function scrollToId(id){
+  const el = document.getElementById(id);
+  if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
+}
 
 // El "día de cobro" es el día del mes en que ingresó (o firmó contrato) el
 // residente — así cada mes se sabe exactamente cuándo le toca pagar,
