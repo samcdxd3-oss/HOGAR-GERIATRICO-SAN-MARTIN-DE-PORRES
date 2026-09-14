@@ -700,6 +700,13 @@ tr:last-child td{border-bottom:none;}
           <div class="field"><label>Correo de Gmail</label><input id="newAccessEmail" type="email" placeholder="nombre@gmail.com"></div>
           <button class="btn btn-primary btn-sm" onclick="darAcceso()">+ Dar acceso</button>
         </div>
+
+        <div class="card" style="margin-top:20px;">
+          <h3 style="font-size:15px; margin-bottom:6px;">🔍 Verificar archivos subidos</h3>
+          <p style="font-size:13px; color:var(--ink-soft); margin-bottom:14px;">Revisa todos los contratos, comprobantes y documentos ya subidos, y avisa si alguno quedó guardado vacío (por ejemplo, por un corte de conexión al subirlo), para saber exactamente cuáles hay que volver a subir — sin adivinar.</p>
+          <button class="btn btn-primary btn-sm" id="auditBtn" onclick="auditUploadedFiles()">Verificar ahora</button>
+          <div id="auditResultsBox" style="margin-top:14px;"></div>
+        </div>
       </section>
 
     </div>
@@ -1109,6 +1116,18 @@ async function uploadFile(file, folder){
 }
 // Compatibilidad con el nombre anterior usado en varias partes del código.
 async function fileToDataURL(file){ return uploadFile(file, 'archivos'); }
+
+// Detecta archivos de 0 bytes ANTES de subirlos (por ejemplo, una foto
+// recién recibida por WhatsApp o un archivo de OneDrive "solo en la nube"
+// que todavía no terminó de descargarse). Avisa con un mensaje claro en
+// vez de subir silenciosamente un archivo vacío que luego no se puede ver.
+function checkFileNotEmpty(file){
+  if(file && file.size===0){
+    showToast('⚠️ "'+file.name+'" pesa 0 bytes (parece no haber terminado de descargarse). Ábrelo primero para verlo completo, y luego inténtalo de nuevo.');
+    return false;
+  }
+  return true;
+}
 
 function emptyData(){ return {residents:[], staff:[], inventory:[], gastos:[], gastoCategories:defaultGastoCategories(), cuotas:[], invMovements:[], staffPayments:[], announcements:[], familyLogs:[], activityLog:[]}; }
 
@@ -1544,7 +1563,8 @@ function renderOtherFilesPreview(){
 function removeOtherFileDraft(idx){ residentOtherFilesDraft.splice(idx,1); renderOtherFilesPreview(); }
 document.getElementById('rOtherFiles').addEventListener('change', async function(){
   if(this.files.length){
-    const newOnes = await Promise.all(Array.from(this.files).map(async f=>({name:f.name, data: await fileToDataURL(f)})));
+    const validFiles = Array.from(this.files).filter(checkFileNotEmpty);
+    const newOnes = await Promise.all(validFiles.map(async f=>({name:f.name, data: await fileToDataURL(f)})));
     residentOtherFilesDraft = residentOtherFilesDraft.concat(newOnes);
     this.value='';
     renderOtherFilesPreview();
@@ -1602,7 +1622,7 @@ async function saveResident(){
   let contractFile = existing ? existing.contractFile : null;
   let contractFileName = existing ? existing.contractFileName : null;
   const fileInput=document.getElementById('rContractFile');
-  if(fileInput.files[0]){ contractFile = await fileToDataURL(fileInput.files[0]); contractFileName = fileInput.files[0].name; }
+  if(fileInput.files[0] && checkFileNotEmpty(fileInput.files[0])){ contractFile = await fileToDataURL(fileInput.files[0]); contractFileName = fileInput.files[0].name; }
   else if(contractFileCleared){ contractFile = null; contractFileName = null; }
 
   const otherFiles = residentOtherFilesDraft;
@@ -1610,7 +1630,7 @@ async function saveResident(){
   let emergencyFile = existing ? existing.emergencyFile : null;
   let emergencyFileName = existing ? existing.emergencyFileName : null;
   const emgInput=document.getElementById('rEmergencyFile');
-  if(emgInput.files[0]){ emergencyFile = await fileToDataURL(emgInput.files[0]); emergencyFileName = emgInput.files[0].name; }
+  if(emgInput.files[0] && checkFileNotEmpty(emgInput.files[0])){ emergencyFile = await fileToDataURL(emgInput.files[0]); emergencyFileName = emgInput.files[0].name; }
   else if(emergencyFileCleared){ emergencyFile = null; emergencyFileName = null; }
 
   const obj = {
@@ -1861,6 +1881,59 @@ function toggleCuotaHistory(cuotaId, evt){
   row.style.display = row.style.display==='none' ? '' : 'none';
 }
 
+// Revisa TODOS los archivos ya subidos (contratos, comprobantes, boletas,
+// documentos de residentes) y avisa cuáles quedaron guardados vacíos
+// (0 bytes), para saber exactamente cuáles hay que volver a subir sin
+// tener que adivinar ni resubir todo de nuevo.
+async function auditUploadedFiles(){
+  if(!auth.currentUser){ showToast('Debes iniciar sesión'); return; }
+  const btn = document.getElementById('auditBtn');
+  const box = document.getElementById('auditResultsBox');
+  btn.disabled = true; btn.textContent = 'Verificando…';
+  box.innerHTML = '<p style="font-size:12px; color:var(--ink-soft);">Revisando archivos, esto puede tardar unos segundos…</p>';
+
+  const items = [];
+  DATA.residents.forEach(r=>{
+    const cuotasR = DATA.cuotas.filter(c=>c.residentId===r.id);
+    collectResidentFiles(r, cuotasR).forEach(f=> items.push({group:r.name, type:f.type, name:f.name, url:f.data}));
+  });
+  DATA.gastos.forEach(g=>{
+    if(g.fileData) items.push({group:'Gastos operativos', type:g.concept||'Gasto', name:g.fileName||'Comprobante', url:g.fileData});
+  });
+  DATA.staffPayments.forEach(p=>{
+    const s = DATA.staff.find(x=>x.id===p.staffId);
+    (p.payments||[]).forEach(pay=>{
+      if(pay.fileData) items.push({group:'Planilla — '+(s?s.name:'—'), type:'Boleta de pago ('+monthLabel(p.monthKey)+')', name:pay.fileName||'Boleta', url:pay.fileData});
+    });
+  });
+
+  const token = await auth.currentUser.getIdToken();
+  const results = [];
+  for(const it of items){
+    if(!it.url || !it.url.includes('/file/uploads/')){ continue; } // solo archivos guardados en el Worker/R2
+    try{
+      const sep = it.url.includes('?')?'&':'?';
+      const res = await fetch(it.url+sep+'authtoken='+encodeURIComponent(token));
+      const len = Number(res.headers.get('content-length')||0);
+      results.push({...it, ok: res.ok && len>0});
+    }catch(e){ results.push({...it, ok:false}); }
+  }
+
+  btn.disabled = false; btn.textContent = 'Verificar ahora';
+  const broken = results.filter(r=>!r.ok);
+  if(results.length===0){
+    box.innerHTML = '<p style="font-size:12px; color:var(--ink-soft);">No se encontraron archivos guardados en el Worker todavía.</p>';
+  } else if(broken.length===0){
+    box.innerHTML = `<p style="font-size:13px; color:var(--ok); font-weight:600;">✅ Se revisaron ${results.length} archivo(s) y todos están bien.</p>`;
+  } else {
+    box.innerHTML = `
+      <p style="font-size:13px; color:var(--warn); font-weight:600; margin-bottom:8px;">⚠️ ${broken.length} de ${results.length} archivo(s) quedaron vacíos y hay que volver a subirlos:</p>
+      <div class="table-wrap"><table><thead><tr><th>Dónde</th><th>Tipo</th><th>Archivo</th></tr></thead><tbody>
+        ${broken.map(b=>`<tr><td>${esc(b.group)}</td><td>${esc(b.type)}</td><td>${esc(b.name)}</td></tr>`).join('')}
+      </tbody></table></div>`;
+  }
+}
+
 // El "día de cobro" es el día del mes en que ingresó (o firmó contrato) el
 // residente — así cada mes se sabe exactamente cuándo le toca pagar,
 // aunque el monto se siga generando por mes calendario.
@@ -1890,7 +1963,8 @@ function renderPagoFilesPreview(){
 function removePagoFileDraft(idx){ pagoFilesDraft.splice(idx,1); renderPagoFilesPreview(); }
 document.getElementById('pagoFile').addEventListener('change', async function(){
   if(this.files.length){
-    const newOnes = await Promise.all(Array.from(this.files).map(async f=>({name:f.name, data: await fileToDataURL(f)})));
+    const validFiles = Array.from(this.files).filter(checkFileNotEmpty);
+    const newOnes = await Promise.all(validFiles.map(async f=>({name:f.name, data: await fileToDataURL(f)})));
     pagoFilesDraft = pagoFilesDraft.concat(newOnes);
     this.value='';
     renderPagoFilesPreview();
@@ -2105,7 +2179,7 @@ async function saveGastoInline(){
   const existing = id ? DATA.gastos.find(x=>x.id===id) : null;
   let fileData = existing?existing.fileData:null, fileName = existing?existing.fileName:null;
   const fi=document.getElementById('gastoFile');
-  if(fi.files[0]){ fileData=await fileToDataURL(fi.files[0]); fileName=fi.files[0].name; }
+  if(fi.files[0] && checkFileNotEmpty(fi.files[0])){ fileData=await fileToDataURL(fi.files[0]); fileName=fi.files[0].name; }
   const obj={id:id||uid(), category:document.getElementById('gastoCategory').value, description:desc, amount:monto, date:document.getElementById('gastoFecha').value||todayISO(), fileData, fileName, createdAt: existing?existing.createdAt:Date.now()};
   if(id){ DATA.gastos = DATA.gastos.map(g=>g.id===id?obj:g); showToast('Gasto actualizado'); logActivity('Se editó el gasto: '+desc+' ('+fmt(monto)+')'); }
   else { DATA.gastos.push(obj); showToast('Gasto agregado'); logActivity('Se registró un gasto: '+desc+' ('+fmt(monto)+')'); }
@@ -2467,7 +2541,7 @@ async function savePagoStaff(){
   if(!monto||monto<=0){ showToast('Ingresa un monto válido'); return; }
   let fileData=null, fileName=null;
   const fi=document.getElementById('pagoStaffFile');
-  if(fi.files[0]){ fileData=await fileToDataURL(fi.files[0]); fileName=fi.files[0].name; }
+  if(fi.files[0] && checkFileNotEmpty(fi.files[0])){ fileData=await fileToDataURL(fi.files[0]); fileName=fi.files[0].name; }
   const editMode = document.getElementById('pagoStaffEditMode').value==='1';
   if(editMode && p.payments.length>0){
     const last=p.payments[p.payments.length-1];
