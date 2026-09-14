@@ -707,6 +707,13 @@ tr:last-child td{border-bottom:none;}
           <button class="btn btn-primary btn-sm" id="auditBtn" onclick="auditUploadedFiles()">Verificar ahora</button>
           <div id="auditResultsBox" style="margin-top:14px;"></div>
         </div>
+
+        <div class="card" style="margin-top:20px;">
+          <h3 style="font-size:15px; margin-bottom:6px;">🛟 Respaldos automáticos</h3>
+          <p style="font-size:13px; color:var(--ink-soft); margin-bottom:14px;">Cada vez que se guarda algo en el sistema, queda una copia con fecha y hora archivada aparte. Si algo se borra o se daña por error, puedes restaurar cualquiera de estas copias.</p>
+          <button class="btn btn-primary btn-sm" id="backupsBtn" onclick="loadBackupsList()">Ver respaldos</button>
+          <div id="backupsListBox" style="margin-top:14px;"></div>
+        </div>
       </section>
 
     </div>
@@ -1132,11 +1139,32 @@ function checkFileNotEmpty(file){
 function emptyData(){ return {residents:[], staff:[], inventory:[], gastos:[], gastoCategories:defaultGastoCategories(), cuotas:[], invMovements:[], staffPayments:[], announcements:[], familyLogs:[], activityLog:[]}; }
 
 let DATA = emptyData();
+let dataLoaded = false; // se vuelve true recién con la PRIMERA carga real desde Firestore
 let suppressNextSnapshot = false;
 
 function saveData(d){
+  // Bloqueo de seguridad: si todavía no llegó la primera carga real de
+  // datos, jamás se permite guardar — así se evita sobrescribir TODO
+  // con un estado vacío por una condición de carrera al abrir la app.
+  if(!dataLoaded){
+    console.error('Se bloqueó un intento de guardar antes de cargar los datos reales.');
+    showToast('⚠️ Espera a que termine de cargar la información antes de hacer cambios.');
+    return;
+  }
   suppressNextSnapshot = true;
   DATA_DOC.set(d).catch(e=>{ console.error('Error guardando en Firestore', e); showToast('No se pudo guardar — revisa tu conexión a internet'); });
+  backupData(d);
+}
+
+// Respaldo automático propio: cada vez que se guarda algo, se archiva
+// una copia con fecha y hora en una colección aparte (no afecta el
+// funcionamiento normal de la app). Sirve para poder recuperar datos
+// si algo vuelve a salir mal, sin depender de funciones de pago de Firestore.
+function backupData(d){
+  try{
+    const stamp = new Date().toISOString().replace(/[:.]/g,'-');
+    db.collection('backups').doc(stamp).set({data:d, savedAt: Date.now()}).catch(e=>console.error('No se pudo guardar el respaldo automático', e));
+  }catch(e){ console.error('Error preparando el respaldo automático', e); }
 }
 
 function startDataSync(){
@@ -1152,6 +1180,7 @@ function startDataSync(){
       DATA = emptyData();
       DATA_DOC.set(DATA);
     }
+    dataLoaded = true;
     cleanOrphans();
     renderAll();
   }, e=>{ console.error('Error de sincronización', e); showToast('Se perdió la conexión con la base de datos'); });
@@ -1885,6 +1914,51 @@ function toggleCuotaHistory(cuotaId, evt){
 // documentos de residentes) y avisa cuáles quedaron guardados vacíos
 // (0 bytes), para saber exactamente cuáles hay que volver a subir sin
 // tener que adivinar ni resubir todo de nuevo.
+// Lista los últimos respaldos automáticos guardados, del más reciente al
+// más antiguo, para poder revisar y restaurar alguno si algo sale mal.
+async function loadBackupsList(){
+  const btn = document.getElementById('backupsBtn');
+  const box = document.getElementById('backupsListBox');
+  btn.disabled = true; btn.textContent = 'Cargando…';
+  box.innerHTML = '<p style="font-size:12px; color:var(--ink-soft);">Cargando respaldos…</p>';
+  try{
+    const snap = await db.collection('backups').orderBy('savedAt','desc').limit(30).get();
+    btn.disabled = false; btn.textContent = 'Ver respaldos';
+    if(snap.empty){
+      box.innerHTML = '<p style="font-size:12px; color:var(--ink-soft);">Todavía no hay respaldos guardados.</p>';
+      return;
+    }
+    box.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Fecha y hora</th><th>Residentes</th><th></th></tr></thead><tbody>
+      ${snap.docs.map(d=>{
+        const b = d.data();
+        const when = new Date(b.savedAt).toLocaleString('es-PE');
+        const nres = (b.data && b.data.residents) ? b.data.residents.length : 0;
+        return `<tr><td>${esc(when)}</td><td>${nres}</td><td><button class="btn btn-danger btn-sm" onclick="restoreBackup('${d.id}')">Restaurar este</button></td></tr>`;
+      }).join('')}
+    </tbody></table></div>`;
+  }catch(e){
+    btn.disabled = false; btn.textContent = 'Ver respaldos';
+    box.innerHTML = '<p style="font-size:12px; color:var(--warn);">No se pudieron cargar los respaldos: '+esc(e.message)+'</p>';
+  }
+}
+// Restaura un respaldo puntual, reemplazando TODOS los datos actuales
+// por los de ese momento. Pide confirmación porque es una acción fuerte.
+async function restoreBackup(backupId){
+  const ok = await showConfirm('¿Restaurar este respaldo? Esto reemplazará TODA la información actual del sistema por la de ese momento. No se puede deshacer.', 'Restaurar respaldo');
+  if(!ok) return;
+  try{
+    const doc = await db.collection('backups').doc(backupId).get();
+    if(!doc.exists){ showToast('Ese respaldo ya no existe'); return; }
+    const backup = doc.data();
+    DATA = backup.data;
+    saveData(DATA);
+    showToast('Respaldo restaurado correctamente');
+    renderAll();
+  }catch(e){
+    showToast('No se pudo restaurar: '+e.message);
+  }
+}
+
 async function auditUploadedFiles(){
   if(!auth.currentUser){ showToast('Debes iniciar sesión'); return; }
   const btn = document.getElementById('auditBtn');
