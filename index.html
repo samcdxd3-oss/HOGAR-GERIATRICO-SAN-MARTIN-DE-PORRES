@@ -424,7 +424,7 @@ tr:last-child td{border-bottom:none;}
         </div>
         <div class="card table-wrap">
           <table>
-            <thead><tr><th>Residente</th><th>Grado</th><th>Ingreso</th><th>Plan mensual</th><th>Contrato</th><th>Estado</th><th></th></tr></thead>
+            <thead><tr><th>Residente</th><th>Sección</th><th>Grado</th><th>Ingreso</th><th>Plan mensual</th><th>Contrato</th><th>Estado</th><th></th></tr></thead>
             <tbody id="residentTableBody"></tbody>
           </table>
           <div class="empty-state" id="residentEmpty" style="display:none;">Aún no hay residentes registrados. Agrega el primero con su contrato digitalizado.</div>
@@ -740,6 +740,18 @@ tr:last-child td{border-bottom:none;}
       <div class="field"><label>Edad</label><input id="rEdad" type="text" readonly disabled placeholder="Se calcula sola" style="background:var(--bg-deep);"></div>
       <div class="field"><label>Grado de dependencia</label><select id="rDependencia"><option>2</option><option>3</option><option>4</option></select></div>
     </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Sede</label>
+        <input id="rSede" type="text" list="rSedeList" placeholder="Ej: Sede Principal">
+        <datalist id="rSedeList"></datalist>
+      </div>
+      <div class="field">
+        <label>Tipo de sección</label>
+        <input id="rSeccion" type="text" list="rSeccionList" placeholder="Ej: Sección A, Diurno…">
+        <datalist id="rSeccionList"></datalist>
+      </div>
+    </div>
     <div class="field-row3">
       <div class="field"><label>Peso (kg)</label><input id="rPeso" type="number" min="0" step="0.1"></div>
       <div class="field"><label>Altura (cm)</label><input id="rAltura" type="number" min="0" step="1"></div>
@@ -756,9 +768,9 @@ tr:last-child td{border-bottom:none;}
     </div>
     <div class="field-row">
       <div class="field file-field">
-        <label>Contrato firmado (foto o PDF)</label>
-        <input id="rContractFile" type="file" accept="image/*,application/pdf">
-        <div id="rContractFilePreview" style="margin-top:8px;"></div>
+        <label>Contrato firmado (foto o PDF — puedes subir varios a la vez, ej. varias páginas)</label>
+        <input id="rContractFile" type="file" accept="image/*,application/pdf" multiple>
+        <div id="rContractFilePreview" style="margin-top:8px; display:flex; flex-wrap:wrap; gap:6px;"></div>
       </div>
       <div class="field file-field">
         <label>Otros requisitos (DNI, recibo, carnet de vacunas… puedes subir varios a la vez)</label>
@@ -937,9 +949,12 @@ tr:last-child td{border-bottom:none;}
       <div class="field"><label>DNI</label><input id="staffDni" type="text"></div>
     </div>
     <div class="field-row3">
-      <div class="field"><label>Edad</label><input id="staffEdad" type="number" min="0" max="100"></div>
+      <div class="field"><label>Fecha de nacimiento</label><input id="staffBirth" type="date" onchange="updateStaffAge()"></div>
+      <div class="field"><label>Edad</label><input id="staffEdad" type="text" readonly disabled placeholder="Se calcula sola" style="background:var(--bg-deep);"></div>
       <div class="field"><label>Sexo</label><select id="staffSexo"><option value="">— No especifica —</option><option>Femenino</option><option>Masculino</option><option>Otro</option></select></div>
-      <div class="field"><label>Cargo *</label><input id="staffRole" type="text" placeholder="Enfermera, cuidador…"></div>
+    </div>
+    <div class="field">
+      <label>Cargo *</label><input id="staffRole" type="text" placeholder="Enfermera, cuidador…">
     </div>
     <div class="field">
       <label>Turno (puede cubrir más de uno)</label>
@@ -1247,11 +1262,25 @@ function doGoogleLogin(){
   // donde otra persona dejó su cuenta de Google recordada, no puede
   // entrar sin la confirmación real del dueño de esa cuenta.
   provider.setCustomParameters({ prompt: 'login' });
-  auth.signInWithPopup(provider).catch(e=>{
-    document.getElementById('authLoginBtn').disabled = false;
-    err.textContent = 'No se pudo iniciar sesión: '+e.message;
-    err.style.display='block';
-  });
+  // En celular (sobre todo iPhone, y más aún si la app está instalada
+  // en la pantalla de inicio) la ventana emergente falla seguido por
+  // cómo Safari particiona el almacenamiento. Ahí usamos "redirect"
+  // (te lleva a la pantalla de Google y regresa), que es más confiable.
+  // En computadora se mantiene la ventana emergente, que es más cómoda.
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  if(isMobile){
+    auth.signInWithRedirect(provider).catch(e=>{
+      document.getElementById('authLoginBtn').disabled = false;
+      err.textContent = 'No se pudo iniciar sesión: '+e.message;
+      err.style.display='block';
+    });
+  } else {
+    auth.signInWithPopup(provider).catch(e=>{
+      document.getElementById('authLoginBtn').disabled = false;
+      err.textContent = 'No se pudo iniciar sesión: '+e.message;
+      err.style.display='block';
+    });
+  }
 }
 function doLogout(){ auth.signOut(); }
 
@@ -1265,6 +1294,17 @@ function showAuthUnauthorized(email){
   document.getElementById('authUnauthorizedBox').style.display='';
   document.getElementById('authUnauthorizedEmail').textContent = email;
 }
+
+// Captura el resultado del login por "redirect" (usado en celulares) al
+// volver de la pantalla de Google. Si algo falla (por ejemplo, el error
+// de almacenamiento particionado de Safari), se muestra un mensaje claro
+// en vez de dejar la pantalla en blanco o sin explicación.
+auth.getRedirectResult().catch(e=>{
+  const err=document.getElementById('authError');
+  if(!err) return;
+  err.textContent = 'No se pudo completar el inicio de sesión ('+e.code+'). Intenta de nuevo, o si la app está instalada en tu pantalla de inicio, prueba abrirla directamente desde el navegador (Safari/Chrome) en vez del ícono.';
+  err.style.display='block';
+});
 
 auth.onAuthStateChanged(async user=>{
   if(!user){
@@ -1516,6 +1556,9 @@ function calcAge(birthISO){
 function updateResidentAge(){
   document.getElementById('rEdad').value = calcAge(document.getElementById('rBirth').value);
 }
+function updateStaffAge(){
+  document.getElementById('staffEdad').value = calcAge(document.getElementById('staffBirth').value);
+}
 
 /* ---- Historial clínico (celdas dinámicas, Enter agrega una nueva) ---- */
 function historialCellHTML(value){
@@ -1569,13 +1612,26 @@ document.querySelectorAll('.file-field').forEach(field=>{
 });
 
 let residentOtherFilesDraft = [];
-let contractFileCleared = false;
+let contractFilesDraft = [];
 let emergencyFileCleared = false;
-function clearContractFileDraft(){
-  contractFileCleared = true;
-  document.getElementById('rContractFile').value='';
-  document.getElementById('rContractFilePreview').innerHTML = '<span style="font-size:12px; color:var(--ink-soft);">Sin archivo adjunto todavía.</span>';
+function renderContractFilesPreview(){
+  const prev=document.getElementById('rContractFilePreview');
+  prev.innerHTML = contractFilesDraft.length ? contractFilesDraft.map((f,i)=>`
+    <span class="filechip" style="gap:8px;">
+      <a href="#" onclick="openFile('${esc(f.data)}'); return false;" style="color:inherit; text-decoration:none;">📎 ${esc(f.name)}</a>
+      <button type="button" onclick="removeContractFileDraft(${i})" style="all:unset; cursor:pointer; color:var(--warn); font-weight:700;">✕</button>
+    </span>`).join('') : '<span style="font-size:12px; color:var(--ink-soft);">Sin archivo adjunto todavía.</span>';
 }
+function removeContractFileDraft(idx){ contractFilesDraft.splice(idx,1); renderContractFilesPreview(); }
+document.getElementById('rContractFile').addEventListener('change', async function(){
+  if(this.files.length){
+    const validFiles = Array.from(this.files).filter(checkFileNotEmpty);
+    const newOnes = await Promise.all(validFiles.map(async f=>({name:f.name, data: await fileToDataURL(f)})));
+    contractFilesDraft = contractFilesDraft.concat(newOnes);
+    this.value='';
+    renderContractFilesPreview();
+  }
+});
 function clearEmergencyFileDraft(){
   emergencyFileCleared = true;
   document.getElementById('rEmergencyFile').value='';
@@ -1622,14 +1678,23 @@ async function openResidentModal(id){
   document.getElementById('rInsurance').value = r?(r.insurance||''):'';
   const insuranceOpts = Array.from(new Set(['SIS','EsSalud','Seguro policial','Particular','Ninguno', ...DATA.residents.map(x=>x.insurance).filter(Boolean)]));
   document.getElementById('rInsuranceList').innerHTML = insuranceOpts.map(o=>`<option value="${esc(o)}">`).join('');
+  document.getElementById('rSede').value = r?(r.sede||''):'';
+  const sedeOpts = Array.from(new Set(DATA.residents.map(x=>x.sede).filter(Boolean)));
+  document.getElementById('rSedeList').innerHTML = sedeOpts.map(o=>`<option value="${esc(o)}">`).join('');
+  document.getElementById('rSeccion').value = r?(r.seccion||''):'';
+  const seccionOpts = Array.from(new Set(DATA.residents.map(x=>x.seccion).filter(Boolean)));
+  document.getElementById('rSeccionList').innerHTML = seccionOpts.map(o=>`<option value="${esc(o)}">`).join('');
   document.getElementById('rContractFile').value='';
   document.getElementById('rOtherFiles').value='';
   document.getElementById('rEmergencyFile').value='';
   residentOtherFilesDraft = (r && r.otherFiles) ? [...r.otherFiles] : [];
   renderOtherFilesPreview();
-  const preview=document.getElementById('rContractFilePreview');
-  contractFileCleared = false;
-  preview.innerHTML = (r && r.contractFile) ? `<span class="filechip" style="gap:8px;"><a href="#" onclick="openFile('${esc(r.contractFile)}'); return false;" style="color:inherit; text-decoration:none;">📎 ${esc(r.contractFileName||'Ver contrato archivado')}</a><button type="button" onclick="clearContractFileDraft()" style="all:unset; cursor:pointer; color:var(--warn); font-weight:700;">✕</button></span>` : '<span style="font-size:12px; color:var(--ink-soft);">Sin archivo adjunto todavía.</span>';
+  // Compatibilidad: residentes viejos guardaban un solo archivo de
+  // contrato (contractFile/contractFileName); los nuevos guardan una
+  // lista (contractFiles), para poder subir varias páginas o versiones.
+  contractFilesDraft = (r && r.contractFiles && r.contractFiles.length) ? [...r.contractFiles]
+    : (r && r.contractFile ? [{name:r.contractFileName||'Contrato', data:r.contractFile}] : []);
+  renderContractFilesPreview();
   const emgPreview=document.getElementById('rEmergencyFilePreview');
   emergencyFileCleared = false;
   emgPreview.innerHTML = (r && r.emergencyFile) ? `<span class="filechip" style="gap:8px;"><a href="#" onclick="openFile('${esc(r.emergencyFile)}'); return false;" style="color:inherit; text-decoration:none;">📎 ${esc(r.emergencyFileName||'Ver archivo')}</a><button type="button" onclick="clearEmergencyFileDraft()" style="all:unset; cursor:pointer; color:var(--warn); font-weight:700;">✕</button></span>` : '<span style="font-size:12px; color:var(--ink-soft);">Sin archivo adjunto.</span>';
@@ -1648,11 +1713,7 @@ async function saveResident(){
   if(!name){ showToast('El nombre es obligatorio'); return; }
   const id=document.getElementById('residentId').value;
   const existing = id ? DATA.residents.find(r=>r.id===id) : null;
-  let contractFile = existing ? existing.contractFile : null;
-  let contractFileName = existing ? existing.contractFileName : null;
-  const fileInput=document.getElementById('rContractFile');
-  if(fileInput.files[0] && checkFileNotEmpty(fileInput.files[0])){ contractFile = await fileToDataURL(fileInput.files[0]); contractFileName = fileInput.files[0].name; }
-  else if(contractFileCleared){ contractFile = null; contractFileName = null; }
+  const contractFiles = contractFilesDraft;
 
   const otherFiles = residentOtherFilesDraft;
 
@@ -1667,11 +1728,13 @@ async function saveResident(){
     dependencia:document.getElementById('rDependencia').value, peso:Number(document.getElementById('rPeso').value)||null, altura:Number(document.getElementById('rAltura').value)||null,
     status:document.getElementById('rStatus').value,
     contractDate:document.getElementById('rContractDate').value, admission:document.getElementById('rAdmission').value,
-    planAmount:Number(document.getElementById('rPlanAmount').value)||0, contractFile, contractFileName, otherFiles,
+    planAmount:Number(document.getElementById('rPlanAmount').value)||0, contractFiles, otherFiles,
     emergencyName:document.getElementById('rEmergencyName').value.trim(), emergencyRelation:document.getElementById('rEmergencyRelation').value.trim(),
     emergencyPhone:document.getElementById('rEmergencyPhone').value.trim(), emergencyAddress:document.getElementById('rEmergencyAddress').value.trim(),
     emergencyFile, emergencyFileName, family:collectFamilyMembers(),
     insurance: document.getElementById('rInsurance').value.trim(),
+    sede: document.getElementById('rSede').value.trim(),
+    seccion: document.getElementById('rSeccion').value.trim(),
     careLevel: existing ? existing.careLevel : 'Básico',
     profRole: existing ? existing.profRole : '', profName: existing ? existing.profName : '',
     clinicalHistory: collectHistorialClinico(),
@@ -1702,19 +1765,26 @@ function renderResidents(){
     (!search || r.name.toLowerCase().includes(search) || (r.dni||'').includes(search)) &&
     (!filter || r.status===filter)
   );
-  body.innerHTML = rows.map(r=>`
+  body.innerHTML = rows.map(r=>{
+    const contractFiles = (r.contractFiles && r.contractFiles.length) ? r.contractFiles : (r.contractFile ? [{name:r.contractFileName||'Contrato', data:r.contractFile}] : []);
+    const contractCell = contractFiles.length
+      ? contractFiles.map((f,i)=>`<a class="filechip" href="#" onclick="openFile('${esc(f.data)}'); return false;" title="${esc(f.name)}">📎${contractFiles.length>1?(' '+(i+1)):''}</a>`).join(' ')
+      : '<span class="pill pill-muted">Sin archivo</span>';
+    return `
     <tr>
       <td><strong>${esc(r.name)}</strong><br><span style="color:var(--ink-soft); font-size:12px;">DNI ${esc(r.dni||'—')} · ${esc(calcAge(r.birth)||'—')}</span></td>
+      <td>${esc(r.seccion||'—')}${r.sede?`<br><span style="color:var(--ink-soft); font-size:11.5px;">${esc(r.sede)}</span>`:''}</td>
       <td>Grado ${esc(r.dependencia||'—')}</td>
       <td>${fmtDate(r.admission)}</td>
       <td style="font-family:var(--mono);">${fmt(r.planAmount)}</td>
-      <td>${r.contractFile?`<a class="filechip" href="#" onclick="openFile('${esc(r.contractFile)}'); return false;">📎 Ver</a>`:'<span class="pill pill-muted">Sin archivo</span>'}</td>
+      <td>${contractCell}</td>
       <td><span class="pill ${r.status==='Activo'?'pill-teal':'pill-muted'}">${esc(r.status)}</span></td>
       <td class="row-actions">
         <button class="btn btn-ghost btn-sm btn-icon" onclick="openResidentModal('${r.id}')" title="Editar">✎</button>
         <button class="btn btn-danger btn-sm btn-icon" onclick="deleteResident('${r.id}')" title="Eliminar">✕</button>
       </td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
   document.getElementById('residentEmpty').style.display = rows.length?'none':'block';
 }
 
@@ -2510,7 +2580,8 @@ function openStaffModal(id){
   const s = id ? DATA.staff.find(x=>x.id===id) : null;
   document.getElementById('staffName').value=s?s.name:'';
   document.getElementById('staffDni').value=s?s.dni:'';
-  document.getElementById('staffEdad').value=s?(s.edad||''):'';
+  document.getElementById('staffBirth').value=s?(s.birth||''):'';
+  updateStaffAge();
   document.getElementById('staffSexo').value=s?(s.sexo||''):'';
   document.getElementById('staffRole').value=s?s.role:'';
   const shifts = s ? (s.shifts||(s.shift?[s.shift]:[])) : ['Mañana'];
@@ -2529,7 +2600,7 @@ function saveStaff(){
   const id=document.getElementById('staffId').value;
   const obj={
     id:id||uid(), name, dni:document.getElementById('staffDni').value.trim(),
-    edad:Number(document.getElementById('staffEdad').value)||null, sexo:document.getElementById('staffSexo').value,
+    birth:document.getElementById('staffBirth').value, sexo:document.getElementById('staffSexo').value,
     role:document.getElementById('staffRole').value.trim(), shifts, shift:shifts.join(', '),
     phone:document.getElementById('staffPhone').value.trim(), hireDate:document.getElementById('staffHireDate').value,
     salary:Number(document.getElementById('staffSalary').value)||0, status:document.getElementById('staffStatus').value
@@ -2552,7 +2623,7 @@ function renderStaffTable(){
   const body=document.getElementById('staffTableBody');
   body.innerHTML = DATA.staff.map(s=>`
     <tr>
-      <td><strong>${esc(s.name)}</strong><br><span style="color:var(--ink-soft); font-size:12px;">${esc(s.phone||'')}${s.edad?' · '+s.edad+' años':''}${s.sexo?' · '+esc(s.sexo):''}</span></td>
+      <td><strong>${esc(s.name)}</strong><br><span style="color:var(--ink-soft); font-size:12px;">${esc(s.phone||'')}${(calcAge(s.birth)||s.edad)?' · '+(calcAge(s.birth)||s.edad)+' años':''}${s.sexo?' · '+esc(s.sexo):''}</span></td>
       <td>${esc(s.role||'—')}</td>
       <td>${esc((s.shifts||[s.shift]).join(', '))}</td>
       <td style="font-family:var(--mono);">${fmt(s.salary)}</td>
@@ -2744,9 +2815,12 @@ function renderResumenDetail(){
           Plan mensual: <strong>${fmt(r.planAmount)}</strong>
         </p>
         <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;">
-          ${r.contractFile?`<a class="filechip" href="#" onclick="openFile('${esc(r.contractFile)}'); return false;">📎 Contrato</a>`:''}
+          ${(() => {
+            const cFiles = (r.contractFiles && r.contractFiles.length) ? r.contractFiles : (r.contractFile ? [{name:r.contractFileName||'Contrato', data:r.contractFile}] : []);
+            return cFiles.map((f,i)=>`<a class="filechip" href="#" onclick="openFile('${esc(f.data)}'); return false;">📎 Contrato${cFiles.length>1?' '+(i+1):''}</a>`).join('');
+          })()}
           ${(r.otherFiles||[]).map(f=>`<a class="filechip" href="#" onclick="openFile('${esc(f.data)}'); return false;">📎 ${esc(f.name)}</a>`).join('')}
-          ${!r.contractFile && !(r.otherFiles||[]).length ? '<span style="font-size:12px; color:var(--ink-soft);">Sin archivos.</span>' : ''}
+          ${!(r.contractFiles||[]).length && !r.contractFile && !(r.otherFiles||[]).length ? '<span style="font-size:12px; color:var(--ink-soft);">Sin archivos.</span>' : ''}
         </div>
       </div>
     </div>
@@ -2799,7 +2873,8 @@ function renderResumenDetail(){
 // Útil para imprimir o mostrar como evidencia completa de un residente.
 function collectResidentFiles(r, cuotas){
   const items = [];
-  if(r.contractFile) items.push({type:'Contrato firmado', name:'Contrato', data:r.contractFile, date:r.contractDate||null});
+  const cFiles = (r.contractFiles && r.contractFiles.length) ? r.contractFiles : (r.contractFile ? [{name:r.contractFileName||'Contrato', data:r.contractFile}] : []);
+  cFiles.forEach(f=> items.push({type:'Contrato firmado', name:f.name, data:f.data, date:r.contractDate||null}));
   (r.otherFiles||[]).forEach(f=> items.push({type:'Otro documento', name:f.name, data:f.data, date:null}));
   if(r.emergencyFile) items.push({type:'Contacto de emergencia', name:r.emergencyFileName||'Archivo', data:r.emergencyFile, date:null});
   (cuotas||[]).forEach(c=>{
