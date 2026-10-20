@@ -760,6 +760,11 @@ tr:last-child td{border-bottom:none;}
       </div>
     </div>
 
+    <div class="field-row" id="rExitDatesRow" style="display:none;">
+      <div class="field"><label>Fecha de egreso</label><input id="rExitDate" type="date"></div>
+      <div class="field"><label>Fecha de fallecimiento</label><input id="rDeathDate" type="date"></div>
+    </div>
+
     <p class="modal-sub">Contrato</p>
     <div class="field-row3">
       <div class="field"><label>Fecha de contrato *</label><input id="rContractDate" type="date"></div>
@@ -1084,12 +1089,25 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
-// Seguridad: la sesión NO se guarda de forma permanente en el dispositivo.
-// Se mantiene solo mientras la pestaña/ventana del navegador siga abierta;
-// al cerrarla (o apagar el celular/PC), hay que volver a iniciar sesión.
-// Así, alguien no autorizado que abra el navegador después no encuentra
-// la app ya conectada.
-auth.setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(e=>console.error('No se pudo configurar la persistencia de sesión', e));
+// Seguridad de la sesión: usamos persistencia LOCAL (Firebase la guarda en
+// el dispositivo) en vez de "solo esta pestaña", porque esa era la causa
+// de que el login se quedara "pegado" en Android después de elegir la
+// cuenta: el login por redirección (necesario en celulares) manda a la
+// pantalla de Google y luego regresa, y si la app se abre de nuevo en una
+// pestaña/ventana distinta a la que salió (algo común en Android al volver
+// de Google), la persistencia "solo esta pestaña" ya se había borrado y
+// Firebase no podía completar el inicio de sesión — sin mostrar ningún
+// error, solo se quedaba cargando.
+//
+// Para seguir cumpliendo la regla de "hay que volver a iniciar sesión
+// cada vez que se cierra la app" (y que un polizón no encuentre la sesión
+// de otra persona ya abierta), la app pone su PROPIA marca en
+// sessionStorage justo después de iniciar sesión (ver SESSION_MARKER más
+// abajo). Esa marca sí se borra al cerrar la pestaña/app, así que aunque
+// el dispositivo recuerde el login, la app igual exige iniciar sesión de
+// nuevo si no encuentra esa marca.
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(e=>console.error('No se pudo configurar la persistencia de sesión', e));
+const SESSION_MARKER = 'sanmartin_sesion_activa';
 const db = firebase.firestore();
 const DATA_DOC = db.collection('sistema').doc('datos');
 
@@ -1295,49 +1313,76 @@ function showAuthUnauthorized(email){
   document.getElementById('authUnauthorizedEmail').textContent = email;
 }
 
-// Captura el resultado del login por "redirect" (usado en celulares) al
-// volver de la pantalla de Google. Si algo falla (por ejemplo, el error
-// de almacenamiento particionado de Safari), se muestra un mensaje claro
-// en vez de dejar la pantalla en blanco o sin explicación.
-auth.getRedirectResult().catch(e=>{
-  const err=document.getElementById('authError');
-  if(!err) return;
-  err.textContent = 'No se pudo completar el inicio de sesión ('+e.code+'). Intenta de nuevo, o si la app está instalada en tu pantalla de inicio, prueba abrirla directamente desde el navegador (Safari/Chrome) en vez del ícono.';
-  err.style.display='block';
-});
-
-auth.onAuthStateChanged(async user=>{
-  if(!user){
-    document.getElementById('authScreen').classList.add('open');
-    document.getElementById('appRoot').style.display='none';
-    showAuthSignedOut();
-    return;
-  }
-  const email = (user.email||'').toLowerCase();
+// Arranque del login: primero esperamos (await) el resultado de un posible
+// regreso de la pantalla de Google, ANTES de decidir nada más. Es clave
+// hacerlo en este orden (y no en paralelo) para que nunca se cierre por
+// error una sesión que en realidad acaba de iniciar por redirección.
+(async function initAuthSession(){
+  let redirectUser = null;
   try{
-    const doc = await db.collection('authorized_emails').doc(email).get();
-    if(!doc.exists){
+    const result = await auth.getRedirectResult();
+    if(result && result.user) redirectUser = result.user;
+  }catch(e){
+    // Por ejemplo, el error de almacenamiento particionado de Safari/iOS,
+    // o cualquier otra falla al volver de la pantalla de Google.
+    const err=document.getElementById('authError');
+    if(err){
+      err.textContent = 'No se pudo completar el inicio de sesión ('+(e.code||e.message||'')+'). Intenta de nuevo, o si la app está instalada en tu pantalla de inicio, prueba abrirla directamente desde el navegador (Chrome/Safari) en vez del ícono.';
+      err.style.display='block';
+    }
+  }
+
+  if(redirectUser){
+    // Login recién completado por redirección: esta es una sesión nueva
+    // y legítima, así que la marcamos como activa.
+    try{ sessionStorage.setItem(SESSION_MARKER, '1'); }catch(e){}
+  } else {
+    // No venimos de un regreso de Google. Si Firebase de todos modos
+    // recuerda a alguien conectado (persistencia LOCAL) pero esta
+    // pestaña/app no tiene nuestra marca de "sesión activa", es que la
+    // app se cerró y se volvió a abrir: por seguridad, cerramos esa
+    // sesión recordada para obligar a iniciar sesión de nuevo.
+    let marcaActiva = false;
+    try{ marcaActiva = sessionStorage.getItem(SESSION_MARKER) === '1'; }catch(e){}
+    if(!marcaActiva && auth.currentUser){
+      try{ await auth.signOut(); }catch(e){ console.error(e); }
+    }
+  }
+
+  auth.onAuthStateChanged(async user=>{
+    if(!user){
       document.getElementById('authScreen').classList.add('open');
       document.getElementById('appRoot').style.display='none';
-      showAuthUnauthorized(email);
+      showAuthSignedOut();
       return;
     }
-  }catch(e){
-    console.error('Error verificando acceso', e);
-    document.getElementById('authScreen').classList.add('open');
-    document.getElementById('appRoot').style.display='none';
-    const err=document.getElementById('authError');
-    err.textContent = 'No se pudo verificar tu acceso — revisa tu conexión e intenta de nuevo.';
-    err.style.display='block';
-    return;
-  }
-  document.getElementById('authScreen').classList.remove('open');
-  document.getElementById('appRoot').style.display='';
-  const info=document.getElementById('sessionInfo');
-  if(info) info.textContent = 'Conectado como '+user.email;
-  startDataSync();
-  startAccessListener();
-});
+    try{ sessionStorage.setItem(SESSION_MARKER, '1'); }catch(e){}
+    const email = (user.email||'').toLowerCase();
+    try{
+      const doc = await db.collection('authorized_emails').doc(email).get();
+      if(!doc.exists){
+        document.getElementById('authScreen').classList.add('open');
+        document.getElementById('appRoot').style.display='none';
+        showAuthUnauthorized(email);
+        return;
+      }
+    }catch(e){
+      console.error('Error verificando acceso', e);
+      document.getElementById('authScreen').classList.add('open');
+      document.getElementById('appRoot').style.display='none';
+      const err=document.getElementById('authError');
+      err.textContent = 'No se pudo verificar tu acceso — revisa tu conexión e intenta de nuevo.';
+      err.style.display='block';
+      return;
+    }
+    document.getElementById('authScreen').classList.remove('open');
+    document.getElementById('appRoot').style.display='';
+    const info=document.getElementById('sessionInfo');
+    if(info) info.textContent = 'Conectado como '+user.email;
+    startDataSync();
+    startAccessListener();
+  });
+})();
 
 /* ---- Abrir archivos protegidos: el Worker de Cloudflare exige estar
    autorizado para ver un archivo (nadie puede verlo solo con adivinar
@@ -1668,6 +1713,12 @@ async function openResidentModal(id){
   document.getElementById('rPeso').value = r?r.peso||'':'';
   document.getElementById('rAltura').value = r?r.altura||'':'';
   document.getElementById('rStatus').value = r?r.status:'Activo';
+  // Fecha de egreso y de fallecimiento solo tienen sentido al editar un
+  // residente que ya existe (no al dar de alta uno nuevo), así que ese
+  // bloque se muestra únicamente en modo edición.
+  document.getElementById('rExitDatesRow').style.display = r ? '' : 'none';
+  document.getElementById('rExitDate').value = r?(r.exitDate||''):'';
+  document.getElementById('rDeathDate').value = r?(r.deathDate||''):'';
   document.getElementById('rContractDate').value = r?r.contractDate:todayISO();
   document.getElementById('rAdmission').value = r?r.admission:todayISO();
   document.getElementById('rPlanAmount').value = r?r.planAmount:1200;
@@ -1727,6 +1778,8 @@ async function saveResident(){
     id: id||uid(), name, dni:document.getElementById('rDni').value.trim(), birth:document.getElementById('rBirth').value,
     dependencia:document.getElementById('rDependencia').value, peso:Number(document.getElementById('rPeso').value)||null, altura:Number(document.getElementById('rAltura').value)||null,
     status:document.getElementById('rStatus').value,
+    exitDate: document.getElementById('rExitDate').value || null,
+    deathDate: document.getElementById('rDeathDate').value || null,
     contractDate:document.getElementById('rContractDate').value, admission:document.getElementById('rAdmission').value,
     planAmount:Number(document.getElementById('rPlanAmount').value)||0, contractFiles, otherFiles,
     emergencyName:document.getElementById('rEmergencyName').value.trim(), emergencyRelation:document.getElementById('rEmergencyRelation').value.trim(),
